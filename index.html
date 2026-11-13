@@ -221,6 +221,9 @@ tr.entry label{display:flex;gap:6px;align-items:center;font-size:.9rem;font-weig
 tr.entry input[type=checkbox]{width:20px;height:20px;accent-color:var(--navy)}
 .entryhelp{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
 .credit{text-align:center;color:var(--ink2);font-size:.85rem;padding:18px 0 8px;border-top:1px solid var(--line)}
+/* 시간 고르기 (시 + 5분 단위 분) */
+.tsel{display:flex;gap:8px} .tsel select{flex:1;min-width:0}
+tr.entry .tsel{flex-direction:column;gap:6px;width:116px} tr.entry .tsel select{width:100%}
 /* 암호 칸 + 눈 단추 */
 .pinbox{position:relative}
 .pinbox .in{padding-right:64px}
@@ -764,7 +767,7 @@ function viewLog(vid){
   return vehPicker(vid)+
   '<div class="row"><h2 class="grow">운행일지</h2>'+(locked?'':'<button class="btn" data-act="row-mode" aria-pressed="'+rowOn+'">'+(rowOn?'표에 바로 적기 끄기':'표에 바로 적기')+'</button><button class="btn main" data-act="trip-new">+ 운행 기록하기</button>')+'</div>'+
   (rowOn?'<div class="banner entryhelp" style="background:var(--surface2)"><span class="grow"><b>종이 일지처럼 표 맨 아래 노란 줄에 바로 적으세요.</b> 칸 사이는 <span class="key">Tab</span>, 저장은 <span class="key">Enter</span>. 종이에 먼저 적어 두었다가 한꺼번에 옮겨 적어도 돼요.</span></div><div id="rowErr" role="alert"></div>':'')+
-  '<div class="row"><button class="btn sm" data-act="month" data-v="-1" aria-label="이전 달">◀ 이전 달</button><b class="num" style="font-size:1.2rem">'+ui.month.replace('-','년 ')+'월</b><button class="btn sm" data-act="month" data-v="1" aria-label="다음 달">다음 달 ▶</button><span class="grow"></span><button class="btn sm" data-act="print">'+saveLabel+'</button><button class="btn sm" data-act="claim" title="이 달 운행일지 + 지출 내역 + 영수증 양식">청구용 인쇄 (일지+영수증)</button><button class="btn sm" data-act="csv">엑셀 파일 저장</button>'+(inClaude?'':'<button class="btn sm" data-act="hwpx">한글 파일 저장</button>')+
+  '<div class="row"><button class="btn sm" data-act="month" data-v="-1" aria-label="이전 달">◀ 이전 달</button><b class="num" style="font-size:1.2rem">'+ui.month.replace('-','년 ')+'월</b><button class="btn sm" data-act="month" data-v="1" aria-label="다음 달">다음 달 ▶</button><span class="grow"></span><button class="btn sm" data-act="print">'+saveLabel+'</button><button class="btn sm" data-act="fuel">유류수불대장 인쇄</button><button class="btn sm" data-act="claim" title="이 달 운행일지 + 유류수불대장 + 지출 내역 + 영수증 양식">청구용 인쇄 (일지+영수증)</button><button class="btn sm" data-act="csv">엑셀 파일 저장</button>'+(inClaude?'':'<button class="btn sm" data-act="hwpx">한글 파일 저장</button>')+
     (locked?'<button class="btn sm" data-act="unlock">마감 풀기</button>':(list.length?'<button class="btn sm" data-act="lock">이 달 마감하기</button>':''))+'</div>'+
   (locked?'<div class="banner" style="background:var(--ok-bg)"><b>마감한 달이에요.</b><span class="grow">결재가 끝난 기록이라 고치거나 지울 수 없어요. 고쳐야 하면 [마감 풀기]를 눌러 주세요.</span></div>':'')+
   (list.length||rowOn?'<div class="tablebox"><table><thead><tr><th>일자</th><th>출발 시간</th><th>도착 시간</th><th>운행 목적</th><th class="r">운행 거리</th><th>운전자 확인</th><th>동승자 확인</th><th>차량 점검 내용</th><th class="r">탑승 아동</th><th></th></tr></thead><tbody>'+rows+(rowOn?entryRow(vid):'')+'</tbody><tfoot><tr><td colspan="4">'+list.length+'회 운행</td><td class="r">'+fmtKm(total)+'km</td><td colspan="3"></td><td class="r">'+kids+'</td><td></td></tr></tfoot></table></div>'
@@ -789,7 +792,7 @@ function viewCare(vid,now,al){
   var v=S.vehicles[vid];
   return vehPicker(vid)+
   '<div class="card list"><div class="row"><h3 class="grow">주유·정비 영수증</h3></div><p class="muted small">구청에 청구할 때 쓰는 <b>지출 증빙서(영수증 붙이는 종이)</b>를 인쇄해요. 왼쪽에 영수증 원본, 오른쪽에 사본을 붙여 나란히 비교할 수 있어요.</p>'+
-    '<div class="row"><button class="btn main" data-act="exp-new">+ 주유·구입 기록하기</button><button class="btn" data-act="rc-blank">빈 영수증 양식 인쇄</button></div></div>'+
+    '<div class="row"><button class="btn main" data-act="exp-new">+ 주유·구입 기록하기</button><button class="btn" data-act="rc-blank">빈 영수증 양식 인쇄</button><button class="btn" data-act="fuel">이 달 유류수불대장 인쇄</button></div></div>'+
   '<div class="row"><h2 class="grow">점검·정비</h2>'+(inClaude?'':'<button class="btn sm" data-act="ics">달력에 알림 넣기</button>')+'</div>'+
   '<p class="muted small">'+(v.ivChecked?'주기는 차량 설명서로 확인한 값이에요.':'주기는 일반 권장값이에요. 차량 설명서와 다르면 설정에서 고치고 \'설명서로 확인했어요\'에 표시해 주세요.')+'</p>'+
   '<div class="alerts">'+al.map(alertRow).join('')+'</div>'+
@@ -856,7 +859,23 @@ function saveBulk(){
   if(bad){$('bErr').innerHTML='<div class="err">'+esc(bad)+': 오늘보다 뒤의 날짜예요.</div>';return;}
   closeDlg(); toast(n?n+'개 항목을 저장했어요. 다음 시기를 계산했습니다.':'적은 항목이 없어요.');
 }
-function nowHM(){var d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function nowHM(){var d=new Date(); d.setMinutes(Math.round(d.getMinutes()/5)*5,0,0); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+// 시간 고르기: '시'와 '분'(5분 단위) 두 칸. 실제 값(13:30)은 숨은 칸에 들어간다.
+function hourName(h){ return h===0?'오전 0시':h<12?'오전 '+h+'시':h===12?'낮 12시':'오후 '+(h-12)+'시'; }
+function timeSel(id,val,label){
+  var p=String(val||'').split(':'), hv=val?p[0]:'', mv=val?p[1]:'', ms=[];
+  for(var m=0;m<60;m+=5) ms.push(String(m).padStart(2,'0'));
+  if(mv&&ms.indexOf(mv)<0){ ms.push(mv); ms.sort(); }   // 예전에 1분 단위로 적은 기록도 그대로 보인다
+  var hs=''; for(var h=0;h<24;h++){ var v=String(h).padStart(2,'0'); hs+='<option value="'+v+'"'+(v===hv?' selected':'')+'>'+hourName(h)+'</option>'; }
+  return '<div class="tsel"><input type="hidden" id="'+id+'" value="'+esc(val||'')+'">'+
+    '<select class="in" id="'+id+'_h" data-tm="'+id+'" aria-label="'+label+' 시"><option value="">시</option>'+hs+'</select>'+
+    '<select class="in" id="'+id+'_m" data-tm="'+id+'" aria-label="'+label+' 분"><option value="">분</option>'+ms.map(function(v){return '<option value="'+v+'"'+(v===mv?' selected':'')+'>'+v+'분</option>';}).join('')+'</select></div>';
+}
+function syncTime(id){
+  var h=$(id+'_h'), m=$(id+'_m'); if(!h||!m) return;
+  if(h.value&&!m.value) m.value='00';
+  $(id).value=h.value&&m.value?h.value+':'+m.value:'';
+}
 var tripDirty=false, tripOpenedAt=0;
 function tripForm(id,like){
   var vid=curVid(), t=id?S.trips[id]:null, odo=odoOf(S,vid), names=driversOf(S).map(function(d){return d.name;});
@@ -869,8 +888,8 @@ function tripForm(id,like){
    (like?'<div class="banner"><span class="grow">지난번 <b>'+esc(like.purpose)+'</b> 운행 내용을 채워 두었어요. <b>도착 km</b>와 확인 칸만 보고 저장해 주세요.</span></div>':'')+
    '<div class="two"><div class="field"><label for="tDate">일자</label><input class="in" type="date" id="tDate" value="'+d.date+'" max="'+today()+'"></div>'+
    '<div class="field"><span class="lab">차량</span><div class="in" style="display:flex;align-items:center;background:var(--surface2)">'+esc(S.vehicles[vid].name)+'</div></div></div>'+
-   '<div class="two"><div class="field"><label for="tST">출발 시간</label><input class="in" type="time" id="tST" value="'+esc(d.startTime||'')+'"></div>'+
-   '<div class="field"><label for="tET">도착 시간</label><input class="in" type="time" id="tET" value="'+esc(d.endTime||'')+'"></div></div>'+
+   '<div class="two"><div class="field"><label for="tST_h">출발 시간 <span class="muted small">(5분 단위)</span></label>'+timeSel('tST',d.startTime,'출발 시간')+'</div>'+
+   '<div class="field"><label for="tET_h">도착 시간 <span class="muted small">(5분 단위)</span></label>'+timeSel('tET',d.endTime,'도착 시간')+'</div></div>'+
    chipsField('tPurpose','운행 목적',PURPOSES,d.purpose,false)+
    '<div class="field"><label for="tDest">목적지 <span class="muted small">(적지 않아도 돼요)</span></label><input class="in" id="tDest" value="'+esc(d.dest||'')+'" placeholder="예: ○○초등학교, 과학관"></div>'+
    '<div class="two"><div class="field"><label for="tStart">출발할 때 계기판 km</label><input class="in km" id="tStart" inputmode="numeric" value="'+d.startKm+'"><span class="hint">지난 운행의 도착 km를 넣어 두었어요.</span></div>'+
@@ -951,8 +970,8 @@ function entryRow(vid){
   var cur=today().slice(0,7), date=k.date&&k.date.slice(0,7)===ui.month?k.date:(ui.month===cur?today():ui.month+'-01');
   var opt=function(o,sel){return '<option'+(o===sel?' selected':'')+'>'+esc(o)+'</option>';};
   return '<tr class="entry" id="entryRow"><td><input class="in d" type="date" id="rDate" value="'+date+'" max="'+today()+'" aria-label="일자"></td>'+
-    '<td><input class="in t" type="time" id="rST" value="'+esc(k.startTime||'')+'" aria-label="출발 시간"></td>'+
-    '<td><input class="in t" type="time" id="rET" value="'+esc(k.endTime||'')+'" aria-label="도착 시간"></td>'+
+    '<td>'+timeSel('rST',k.startTime,'출발 시간')+'</td>'+
+    '<td>'+timeSel('rET',k.endTime,'도착 시간')+'</td>'+
     '<td><select class="in n" id="rPurpose" aria-label="운행 목적">'+PURPOSES.map(function(p){return opt(p,k.purpose||'등원');}).join('')+'</select><input class="in n" id="rDest" value="'+esc(k.dest||'')+'" placeholder="목적지(선택)" aria-label="목적지" style="margin-top:6px"></td>'+
     '<td class="r"><input class="in k" id="rStart" inputmode="numeric" value="'+odo+'" aria-label="출발 km" title="출발 km"><div class="muted small">↓ 도착 km</div><input class="in k" id="rEnd" inputmode="numeric" placeholder="도착 km" aria-label="도착 km"></td>'+
     '<td><input class="in n" id="rDriver" value="'+esc(k.driver||LS.get('cj.driver','')||me||names[0]||'')+'" list="rNames" aria-label="운전자"><label><input type="checkbox" id="rDrvOk">확인</label></td>'+
@@ -971,7 +990,7 @@ function saveRow(){
   // 다음 줄에는 같은 날짜·목적·운전자·동승자를 남겨 둔다 (종이 일지를 옮겨 적을 때 편하게)
   rowKeep={date:f.date,purpose:f.purpose,driver:f.driver,guardian:f.guardian,riders:f.riders};
   var msg=commitTrip(null,f,rowOpenedAt||Date.now()); rowOpenedAt=0;
-  ui.month=f.date.slice(0,7); render(); toast(msg); try{$('rST').focus();}catch(e){}
+  ui.month=f.date.slice(0,7); render(); toast(msg); try{$('rST_h').focus();}catch(e){}
 }
 function delTrip(id){
   var old=S.trips[id]; if(!old) return;
@@ -1026,7 +1045,8 @@ var HELP=[
   '<b>[점검·정비]</b> 탭 → <b>[+ 주유·구입 기록하기]</b>에서 금액을 적고 <b>[저장하고 영수증 양식 인쇄]</b>를 눌러요.',
   '인쇄한 종이 왼쪽에 <b>영수증 원본</b>, 오른쪽에 <b>사본</b>을 붙이면 나란히 비교할 수 있어요.',
   '엔진오일처럼 주기가 있는 정비는 그 항목의 <b>[교환했어요]</b>로 적으면 다음 교환 시기도 계산돼요.',
-  '구청에 청구할 때는 <b>[운행일지]</b> 탭 → 그 달로 옮긴 뒤 <b>[청구용 인쇄 (일지+영수증)]</b>를 누르면 운행일지, 지출 내역, 영수증 양식이 한 번에 나와요.']]
+  '주유할 때는 영수증의 <b>주유량(리터)</b>도 적어 주세요. <b>[운행일지]</b> 탭의 <b>[유류수불대장 인쇄]</b>로 지침 양식의 유류수불대장이 나와요.',
+  '구청에 청구할 때는 <b>[운행일지]</b> 탭 → 그 달로 옮긴 뒤 <b>[청구용 인쇄 (일지+영수증)]</b>를 누르면 운행일지, 유류수불대장, 지출 내역, 영수증 양식이 한 번에 나와요.']]
 ];
 function helpBody(){ return HELP.map(function(h,i){return '<div class="howto"><h3><span class="pill unk">'+(i+1)+'</span>'+h[0]+'</h3><ol class="steps">'+h[1].map(function(x){return '<li>'+x+'</li>';}).join('')+'</ol></div>';}).join(''); }
 function helpDlg(){
@@ -1070,8 +1090,9 @@ function expForm(){
    '<div class="two"><div class="field"><label for="eDate">날짜</label><input class="in" type="date" id="eDate" value="'+today()+'" max="'+today()+'"></div>'+
    '<div class="field"><label for="eCost">금액(원)</label><input class="in km" id="eCost" inputmode="numeric" placeholder="예: 50000"></div></div>'+
    '<div class="two"><div class="field"><label for="eShop">사용처 <span class="muted small">(선택)</span></label><input class="in" id="eShop" placeholder="예: ○○주유소"></div>'+
-   '<div class="field"><label for="eKm">그때 계기판 km <span class="muted small">(선택)</span></label><input class="in" id="eKm" inputmode="numeric" placeholder="'+fmtKm(odoOf(S,vid))+'"></div></div>'+
-   '<div class="field"><label for="eMemo">내용 <span class="muted small">(선택)</span></label><input class="in" id="eMemo" placeholder="예: 경유 35리터"></div><div id="eErr" role="alert"></div></div>'+
+   '<div class="field"><label for="eKm">그때 계기판 km</label><input class="in" id="eKm" inputmode="numeric" value="'+odoOf(S,vid)+'"><span class="hint">유류수불대장의 주행거리 칸에 들어가요.</span></div></div>'+
+   '<div class="field" id="eLitBox"><label for="eLit">주유량(리터) <span class="muted small">(주유일 때 · 영수증에 적힌 리터)</span></label><input class="in km" id="eLit" inputmode="decimal" placeholder="예: 35.2"></div>'+
+   '<div class="field"><label for="eMemo">내용 <span class="muted small">(선택)</span></label><input class="in" id="eMemo" placeholder="예: 경유, 체험활동 다녀오며 주유"></div><div id="eErr" role="alert"></div></div>'+
    '<footer><button type="button" class="btn" data-act="dlg-close">취소</button><button type="button" class="btn" data-act="exp-save" data-p="1">저장하고 영수증 양식 인쇄</button><button type="button" class="btn main" data-act="exp-save">저장하기</button></footer>');
 }
 function saveExp(andPrint){
@@ -1079,8 +1100,10 @@ function saveExp(andPrint){
   if(!d){$('eErr').innerHTML='<div class="err">날짜를 골라 주세요.</div>';return;}
   if(d>today()){$('eErr').innerHTML='<div class="err">오늘보다 뒤의 날짜예요.</div>';return;}
   if(isNaN(cost)||!cost){$('eErr').innerHTML='<div class="err">금액을 숫자로 적어 주세요.</div>';return;}
+  var lit=parseFloat(String($('eLit').value).replace(/[^0-9.]/g,''))||0;
+  if(e.k==='fuel'&&!lit){$('eErr').innerHTML='<div class="err">주유량(리터)을 적어 주세요. 유류수불대장에 들어가요. 영수증에 적혀 있어요.</div>';return;}
   var id=newId();
-  put('services',id,{vid:curVid(),item:e.k,itemName:e.n,date:d,km:isNaN(km)?0:km,cost:cost,shop:$('eShop').value.trim(),memo:$('eMemo').value.trim(),by:me,ts:Date.now()});
+  put('services',id,{vid:curVid(),item:e.k,itemName:e.n,date:d,km:isNaN(km)?0:km,cost:cost,liters:e.k==='fuel'?Math.round(lit*100)/100:0,shop:$('eShop').value.trim(),memo:$('eMemo').value.trim(),by:me,ts:Date.now()});
   closeDlg(); toast(e.n+' '+fmtKm(cost)+'원을 저장했어요.');
   if(andPrint) printReceipts([id]);
 }
@@ -1174,7 +1197,7 @@ function receiptHtml(s){
     '<table class="info"><tr><th>차량</th><td>'+esc((v.name||'')+' '+(v.plate||''))+'</td><th>지출일</th><td>'+(dt?dt[0]+'년 '+(+dt[1])+'월 '+(+dt[2])+'일':'&nbsp; &nbsp; &nbsp; 년 &nbsp; &nbsp; 월 &nbsp; &nbsp; 일')+'</td></tr>'+
     '<tr><th>항목</th><td>'+(blank?line:esc(svcName(s)))+'</td><th>금액</th><td>'+(s.cost?fmtKm(s.cost)+' 원':'<span style="float:right">원</span>')+'</td></tr>'+
     '<tr><th>사용처</th><td>'+(esc(s.shop||'')||line)+'</td><th>그때 km</th><td>'+(s.km?fmtKm(s.km)+' km':'<span style="float:right">km</span>')+'</td></tr>'+
-    '<tr><th>내용</th><td colspan="3">'+(esc(s.memo||'')||line)+'</td></tr>'+
+    '<tr><th>내용</th><td colspan="3">'+(esc([s.liters?'주유량 '+s.liters+'L':'',s.memo||''].filter(Boolean).join(' · '))||line)+'</td></tr>'+
     '<tr><th>작성자</th><td>'+(esc(s.by||'')||line)+'</td><th>확인자</th><td>'+line+'</td></tr></table>'+
     '<div class="boxes"><div class="box"><b>영수증 원본</b><span>여기에 원본을 붙여 주세요</span></div><div class="box"><b>영수증 사본</b><span>여기에 복사본을 붙여 주세요</span></div></div>'+
     '<div class="ft">위와 같이 차량 운영비를 지출하였음을 확인합니다.<div class="sig">'+(dt?dt[0]:'20&nbsp;&nbsp;&nbsp;')+'년 &nbsp; &nbsp; 월 &nbsp; &nbsp; 일 &nbsp; &nbsp; 작성자 &nbsp; '+(esc(s.by||'')||'&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;')+' &nbsp; (서명)</div></div></div>';
@@ -1183,6 +1206,21 @@ function printReceipts(ids){
   var list=ids?ids.map(function(id){return S.services[id];}).filter(Boolean):[null];
   printOut(list.map(receiptHtml).join(''),RC_CSS,list[0]?'지출증빙서_'+list[0].date:'지출증빙서_빈양식','세로');
 }
+/* --- 유류수불대장: 지역아동센터 운영지침 별첨 양식의 칸(연번·일자·주유량·금액·주행거리·비고·결재 담당/시설장) --- */
+function fuelsOf(vid,month){ return vals(S.services).filter(function(s){return s.vid===vid&&s.item==='fuel'&&s.date.slice(0,7)===month;}).sort(function(a,b){return (a.date+String(a.km||0).padStart(8,'0')).localeCompare(b.date+String(b.km||0).padStart(8,'0'));}); }
+function fuelLedgerHtml(vid,month){
+  var v=S.vehicles[vid], list=fuelsOf(vid,month), L=0, W=0;
+  var rows=list.map(function(s,i){L+=+s.liters||0; W+=+s.cost||0; return '<tr><td>'+(i+1)+'</td><td>'+fmtD(s.date)+'</td><td class="r">'+(s.liters?s.liters.toLocaleString('ko-KR',{maximumFractionDigits:2})+' L':'')+'</td><td class="r">'+(s.cost?fmtKm(s.cost)+'원':'')+'</td><td class="r">'+(s.km?fmtKm(s.km)+' km':'')+'</td><td class="l">'+esc([s.shop,s.memo].filter(Boolean).join(' · '))+'</td><td></td><td></td></tr>';}).join('');
+  for(var i=list.length;i<Math.max(list.length,15);i++) rows+='<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+  return '<div class="fl"><h1>유류수불대장</h1><p>'+esc(S.settings.center||'')+' &nbsp; '+month.replace('-','년 ')+'월 &nbsp; 차량번호: '+esc(v.plate||'')+' ('+esc(v.name)+') &nbsp; 연료: '+esc(v.fuel||'')+'</p>'+
+    '<table><thead><tr><th rowspan="2">연번</th><th rowspan="2">일자</th><th rowspan="2">주유량</th><th rowspan="2">금액</th><th rowspan="2">주행거리<br><span>(주유 때 계기판)</span></th><th rowspan="2">비고<br><span>(주유소·내용)</span></th><th colspan="2">결재</th></tr><tr><th>담당</th><th>시설장</th></tr></thead><tbody>'+rows+'</tbody>'+
+    '<tfoot><tr><td colspan="2">합계 ('+list.length+'회)</td><td class="r">'+L.toLocaleString('ko-KR',{maximumFractionDigits:2})+' L</td><td class="r">'+fmtKm(W)+'원</td><td colspan="4"></td></tr></tfoot></table>'+
+    '<p class="nt">※ 지역아동센터 운영지침의 유류수불대장 칸을 따랐어요. 주유 기록([점검·정비] → [+ 주유·구입 기록하기])에서 채워지고, 빈 줄은 손으로 적어도 돼요.</p></div>';
+}
+var FL_CSS='@page port{size:A4 portrait;margin:12mm}.fl{page:port;font-family:"Malgun Gothic","Noto Sans KR",sans-serif;color:#000;font-size:10.5pt;padding:0 1.5px}.ps+.fl,.fl+.rs,.fl+.rc{break-before:page}'+
+  '.fl h1{font-size:20pt;letter-spacing:4pt;text-align:center;margin:0 0 3mm}.fl p{margin:0 0 3mm}.fl table{width:100%;border-collapse:collapse}.fl th,.fl td{border:1px solid #000;padding:2.4mm 2mm;text-align:center;color:#000;background:none}.fl th{background:#eee}.fl th span{font-size:8pt;font-weight:normal}'+
+  '.fl td{height:6mm}.fl .r{text-align:right}.fl .l{text-align:left}.fl tfoot td{font-weight:bold}.fl .nt{font-size:8.5pt;margin-top:2mm}';
+function doFuel(){ var vid=curVid(); printOut(fuelLedgerHtml(vid,ui.month),FL_CSS,'유류수불대장_'+ui.month,'세로'); if(!fuelsOf(vid,ui.month).length) toast('이 달에 적은 주유 기록이 없어 빈 양식을 인쇄해요.'); }
 function monthExpenses(vid,month){
   return vals(S.services).filter(function(s){return s.vid===vid&&s.date.slice(0,7)===month&&+s.cost>0;}).sort(function(a,b){return a.date.localeCompare(b.date);});
 }
@@ -1193,7 +1231,7 @@ function doClaim(){
     '<table class="sum"><thead><tr><th>번호</th><th>날짜</th><th>항목</th><th>사용처</th><th>내용</th><th class="r">금액</th></tr></thead><tbody>'+
     (ex.length?ex.map(function(s,i){total+=+s.cost;return '<tr><td>'+(i+1)+'</td><td>'+fmtD(s.date)+'</td><td>'+esc(svcName(s))+'</td><td>'+esc(s.shop||'')+'</td><td>'+esc(s.memo||'')+'</td><td class="r">'+fmtKm(s.cost)+'원</td></tr>';}).join(''):'<tr><td colspan="6" style="text-align:center">이 달에 적은 지출이 없어요</td></tr>')+
     '</tbody><tfoot><tr><th colspan="5">합계</th><td class="r"><b>'+fmtKm(total)+'원</b></td></tr></tfoot></table></div>';
-  printOut(sheetHtml(vid,ui.month)+sum+(ex.length?ex.map(receiptHtml).join(''):receiptHtml(null)),PRINT_CSS+RC_CSS,'청구용_'+ui.month,'운행일지는 가로, 영수증은 세로');
+  printOut(sheetHtml(vid,ui.month)+(fuelsOf(vid,ui.month).length?fuelLedgerHtml(vid,ui.month):'')+sum+(ex.length?ex.map(receiptHtml).join(''):receiptHtml(null)),PRINT_CSS+FL_CSS+RC_CSS,'청구용_'+ui.month,'운행일지는 가로, 영수증은 세로');
 }
 function csvOf(rows){var q=function(s){return '"'+String(s==null?'':s).replace(/"/g,'""')+'"';}; return '﻿'+rows.map(function(r){return r.map(q).join(',');}).join('\r\n');}
 function doCsv(){
@@ -1211,8 +1249,8 @@ function doHwpx(){
 }
 function doSvcCsv(){
   var vid=curVid(), name={}; ITEMS.forEach(function(i){name[i.k]=i.full;});
-  var rows=[['날짜','항목','그때km','비용','정비소','메모','적은 사람']];
-  vals(S.services).filter(function(s){return s.vid===vid;}).sort(function(a,b){return a.date.localeCompare(b.date);}).forEach(function(s){rows.push([s.date,svcName(s),s.km||'',s.cost||'',s.shop,s.memo,s.by]);});
+  var rows=[['날짜','항목','그때km','비용','주유량(L)','정비소','메모','적은 사람']];
+  vals(S.services).filter(function(s){return s.vid===vid;}).sort(function(a,b){return a.date.localeCompare(b.date);}).forEach(function(s){rows.push([s.date,svcName(s),s.km||'',s.cost||'',s.liters||'',s.shop,s.memo,s.by]);});
   saveFile('정비이력_'+S.vehicles[vid].name+'.csv',csvOf(rows),'text/csv','정비 이력을 저장했어요.');
 }
 // 휴대폰·PC 달력에 넣는 파일(.ics). 기한 7일 전에 달력 앱이 알려 준다.
@@ -1286,6 +1324,7 @@ document.addEventListener('click',function(ev){
     case 'rc-one': printReceipts([v]); break;
     case 'rc-blank': printReceipts(null); break;
     case 'claim': doClaim(); break;
+    case 'fuel': doFuel(); break;
     case 'help': helpDlg(); break;
     case 'pin-eye': (function(){var i=$(v), show=i.type==='password'; i.type=show?'text':'password'; b.setAttribute('aria-pressed',show); b.setAttribute('aria-label',show?'암호 가리기':'암호 보이기'); b.innerHTML=EYE[show?1:0]; i.focus();})(); break;
     case 'help-print': printHelp(); break;
@@ -1341,11 +1380,12 @@ document.addEventListener('click',function(ev){
     case 'pin-new': window.pinFlow.make(); break;
     case 'pin-change': openDlg('<header><h2>센터 암호 바꾸기</h2><button type="button" class="btn sm" data-act="dlg-close">닫기</button></header><div class="body"><p class="muted">바꾸면 다른 선생님 기기에서도 새 암호를 다시 적어야 해요.</p><div class="field"><label for="pinNew">새 암호 (숫자 4자리 이상)</label>'+pinBox('pinNew')+'</div><div id="pinErr" role="alert"></div></div><footer><button type="button" class="btn" data-act="dlg-close">취소</button><button type="button" class="btn main" data-act="pin-change2">바꾸기</button></footer>'); break;
     case 'pin-change2': (function(){var p=$('pinNew').value.trim(); if(!/^\d{4,}$/.test(p)){$('pinErr').innerHTML='<div class="err">숫자 4자리 이상으로 적어 주세요.</div>';return;} gcall({op:'setPin',newPin:p}).then(function(){pin=p;LS.set('cj.pin',pin);closeDlg();toast('센터 암호를 바꿨어요.');},function(){$('pinErr').innerHTML='<div class="err">바꾸지 못했어요. 인터넷을 확인해 주세요.</div>';});})(); break;
-    case 'chip': (function(){var f=b.dataset.f; $(f).value=v; b.parentNode.querySelectorAll('.chip').forEach(function(c){c.setAttribute('aria-pressed',c===b);}); if($('dlg').dataset.trip) keepDraft();})(); break;
+    case 'chip': (function(){var f=b.dataset.f; $(f).value=v; if(f==='eKind'&&$('eLitBox')) $('eLitBox').hidden=(v!=='주유'); b.parentNode.querySelectorAll('.chip').forEach(function(c){c.setAttribute('aria-pressed',c===b);}); if($('dlg').dataset.trip) keepDraft();})(); break;
     case 'step': (function(){var n=(numVal('tRiders')||0)+(+v); $('tRiders').value=Math.max(0,n); keepDraft();})(); break;
   }
 });
 document.addEventListener('input',function(ev){
+  if(ev.target.dataset&&ev.target.dataset.tm) syncTime(ev.target.dataset.tm);   // 시·분을 고르면 숨은 칸에 13:30처럼 넣는다 (먼저 해야 보관할 때 들어간다)
   if($('dlg').dataset.trip&&ev.target.closest('#tripBody')) keepDraft();
   if(ev.target.closest('#entryRow')){ rowDirty=true; if(!rowOpenedAt) rowOpenedAt=Date.now(); }
   if(ev.target.id==='tStart'||ev.target.id==='tEnd') updDist();
