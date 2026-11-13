@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<div style="background:#16233a;color:#fff;text-align:center;padding:10px 16px;font:500 15px/1.5 sans-serif">테스트용 사이트예요. 적은 기록은 <b>이 기기에만</b> 저장되고 센터 기록과 섞이지 않아요. 처음이면 <b>[예시로 먼저 살펴보기]</b>를 눌러 보세요.</div>
+<title>차량 지킴이</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* 배치: 맨 위 머리말(센터·차량·저장 상태) → 탭 4개(오늘/운행일지/점검·정비/설정). PC는 위쪽 탭, 휴대폰은 아래쪽 탭.
+   주제 색: 어린이통학버스 노란색 + 짙은 남색 글씨. 상태색(초록/주황/빨강)은 주제 색과 따로 둔다. */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --surface2:#e9edf3; --line:#cfd6e0;
+  --ink:#16233a; --ink2:#4d5b72; --bus:#ffc400; --bus-ink:#231a00; --navy:#1d3a6b; --navy-ink:#ffffff;
+  --ok:#157f4b; --ok-bg:#dff3e8; --soon:#a65b00; --soon-bg:#ffedc9; --over:#b3261e; --over-bg:#fde0dc; --unk:#566176; --unk-bg:#e4e8ef;
+  --focus:#1565d8;
+  --f-body:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-display:"Jua","Noto Sans KR","Malgun Gothic",sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1622; --surface:#19222f; --surface2:#232e3e; --line:#3a475a;
+  --ink:#eef2f8; --ink2:#a9b4c6; --bus:#ffc400; --bus-ink:#231a00; --navy:#8fb4f5; --navy-ink:#0b1830;
+  --ok:#6bd79c; --ok-bg:#143524; --soon:#ffc266; --soon-bg:#3d2c0c; --over:#ff9a90; --over-bg:#47201c; --unk:#b3bdcd; --unk-bg:#2a3444;
+  --focus:#8fb4f5; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0f1622; --surface:#19222f; --surface2:#232e3e; --line:#3a475a;
+  --ink:#eef2f8; --ink2:#a9b4c6; --bus:#ffc400; --bus-ink:#231a00; --navy:#8fb4f5; --navy-ink:#0b1830;
+  --ok:#6bd79c; --ok-bg:#143524; --soon:#ffc266; --soon-bg:#3d2c0c; --over:#ff9a90; --over-bg:#47201c; --unk:#b3bdcd; --unk-bg:#2a3444;
+  --focus:#8fb4f5; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.55;word-break:keep-all;overflow-wrap:anywhere;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 96px}
+h1,h2,h3,p{margin:0}
+h2{font-size:1.3rem;font-weight:700;text-wrap:balance}
+h3{font-size:1.08rem;font-weight:700}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+
+/* 머리말 */
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding-block:16px 0}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand svg{flex:none}
+.brand b{font-family:var(--f-display);font-weight:400;font-size:1.65rem;line-height:1.1}
+.brand span{color:var(--ink2);font-size:.95rem;overflow-wrap:anywhere}
+.topr{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}
+.fb{border-color:var(--navy);color:var(--navy)}
+.rate{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.rate .chip{padding:8px 4px;text-align:center;font-size:.9rem}
+.sync{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;font-size:.92rem;font-weight:500;background:var(--unk-bg);color:var(--unk)}
+.sync i{width:10px;height:10px;border-radius:50%;background:currentColor;flex:none}
+.sync.on{background:var(--ok-bg);color:var(--ok)}
+.sync.local{background:var(--soon-bg);color:var(--soon)}
+
+/* 탭 */
+.tabs{display:flex;gap:6px;border-bottom:2px solid var(--line)}
+.tabs button{border:0;background:none;padding:12px 20px;font-size:1.08rem;font-weight:700;color:var(--ink2);border-bottom:4px solid transparent;margin-bottom:-2px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--bus)}
+.tabs .cnt{background:var(--over);color:var(--surface);border-radius:999px;font-size:.8rem;min-width:22px;height:22px;display:inline-grid;place-items:center;padding:0 6px}
+@media (max-width:700px){
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);border-bottom:0;gap:0;
+    padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+  .tabs button{flex:1;justify-content:center;padding:14px 2px;font-size:.93rem;white-space:nowrap;gap:4px;border-bottom:0;border-top:4px solid transparent;margin:0}
+  .tabs button[aria-selected="true"]{border-top-color:var(--bus)}
+}
+
+/* 공통 부품 */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.grow{flex:1;min-width:0}
+.muted{color:var(--ink2)}
+.small{font-size:.92rem}
+.num{font-variant-numeric:tabular-nums}
+.btn{min-height:50px;padding:10px 20px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-align:center}
+.btn:hover{border-color:var(--ink2)}
+.btn.main{background:var(--bus);border-color:var(--bus);color:var(--bus-ink)}
+.btn.navy{background:var(--navy);border-color:var(--navy);color:var(--navy-ink)}
+.btn.big{min-height:64px;font-size:1.25rem;padding:12px 28px}
+.btn.sm{min-height:42px;padding:6px 14px;font-size:.95rem}
+.btn.danger{color:var(--over);border-color:var(--over)}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 12px;font-size:.9rem;font-weight:700;white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.soon{background:var(--soon-bg);color:var(--soon)}
+.pill.over{background:var(--over-bg);color:var(--over)} .pill.unk{background:var(--unk-bg);color:var(--unk)}
+.ex{background:var(--surface2);color:var(--ink2);border-radius:6px;padding:1px 8px;font-size:.8rem;font-weight:700}
+.banner{background:var(--soon-bg);color:var(--ink);border-radius:var(--r);padding:14px 18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.empty{text-align:center;padding:36px 16px;color:var(--ink2);display:flex;flex-direction:column;gap:14px;align-items:center}
+
+/* 차량 고르기 */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:46px;padding:8px 16px;border-radius:999px;border:2px solid var(--line);background:var(--surface);cursor:pointer;font-weight:500}
+.chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:var(--navy-ink);font-weight:700}
+
+/* 오늘 화면 */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center}
+@media (max-width:700px){.hero{grid-template-columns:minmax(0,1fr)}}
+.odo{display:flex;gap:4px;flex-wrap:nowrap;align-items:flex-end}
+.odo span{font-family:var(--f-display);font-size:clamp(1.7rem,7vw,2.5rem);line-height:1;background:var(--ink);color:var(--surface);border-radius:6px;padding:8px clamp(5px,1.6vw,9px) 6px;font-variant-numeric:tabular-nums}
+.odo em{font-style:normal;font-weight:700;color:var(--ink2);padding-left:6px}
+.sumrow{display:flex;flex-wrap:wrap;gap:8px}
+.alerts{display:flex;flex-direction:column;gap:10px}
+.alert{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 14px;align-items:center;padding:14px 16px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+.alert .mark{width:14px;align-self:stretch;border-radius:7px}
+.alert.over .mark{background:var(--over)} .alert.soon .mark{background:var(--soon)} .alert.unk .mark{background:var(--unk)} .alert.ok .mark{background:var(--ok)}
+.alert .why{color:var(--ink2);font-size:.93rem}
+@media (max-width:560px){.alert{grid-template-columns:auto minmax(0,1fr)} .alert .act{grid-column:2}}
+.bar{height:10px;border-radius:5px;background:var(--surface2);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;border-radius:5px;background:var(--ok)}
+.bar.soon i{background:var(--soon)} .bar.over i{background:var(--over)}
+
+/* 표 */
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.97rem}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:var(--surface2);font-size:.9rem}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+tfoot td{font-weight:700;background:var(--surface2)}
+.linkbtn{border:0;background:none;color:var(--navy);font-weight:700;cursor:pointer;padding:6px 4px;text-decoration:underline}
+
+/* 입력 창 */
+dialog{border:0;border-radius:18px;padding:0;background:var(--surface);color:var(--ink);width:min(640px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
+dialog::backdrop{background:rgba(10,16,28,.55)}
+.dlg{display:flex;flex-direction:column;max-height:calc(100dvh - 24px)}
+.dlg header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.dlg header h2{flex:1}
+.dlg .body{padding:18px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:18px}
+.dlg footer{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.field>.lab,.lab{font-weight:700}
+.field .hint{color:var(--ink2);font-size:.9rem}
+.in{min-height:52px;border:2px solid var(--line);border-radius:12px;padding:8px 14px;background:var(--surface);width:100%}
+.in.km{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:480px){.two{grid-template-columns:minmax(0,1fr)}}
+.dist{background:var(--surface2);border-radius:12px;padding:12px 16px;font-weight:700;font-size:1.1rem}
+.err{background:var(--over-bg);color:var(--over);border-radius:12px;padding:12px 16px;font-weight:700}
+.check{display:flex;gap:12px;align-items:flex-start;padding:14px;border:2px solid var(--line);border-radius:12px;cursor:pointer}
+.check input{width:26px;height:26px;flex:none;margin-top:2px;accent-color:var(--navy)}
+.check:has(input:checked){border-color:var(--ok);background:var(--ok-bg)}
+.stepper{display:flex;gap:8px;align-items:center}
+.stepper button{width:52px;height:52px;border-radius:12px;border:2px solid var(--line);background:var(--surface);font-size:1.5rem;font-weight:700;cursor:pointer}
+.stepper input{width:90px;text-align:center}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--surface);padding:12px 22px;border-radius:999px;font-weight:700;z-index:50;max-width:calc(100vw - 32px)}
+.setgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:18px;align-items:start}
+.list{display:flex;flex-direction:column;gap:10px}
+.item{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:12px}
+
+/* 노랑이 (노란 차 캐릭터) */
+.buddy{display:flex;gap:12px;align-items:center}
+.buddy svg{flex:none;width:84px;height:66px}
+.bubble{position:relative;flex:1;min-width:0;background:var(--surface2);border-radius:16px;padding:12px 16px}
+.bubble::before{content:"";position:absolute;left:-9px;top:50%;margin-top:-9px;border:9px solid transparent;border-right-color:var(--surface2);border-left:0}
+.bubble b{display:block;font-size:1.2rem;line-height:1.35}
+.bubble.over{background:var(--over-bg)} .bubble.over::before{border-right-color:var(--over-bg)}
+.bubble.soon{background:var(--soon-bg)} .bubble.soon::before{border-right-color:var(--soon-bg)}
+.bubble.ok{background:var(--ok-bg)} .bubble.ok::before{border-right-color:var(--ok-bg)}
+@media (max-width:480px){.buddy svg{width:64px;height:50px} .bubble b{font-size:1.08rem}}
+.season{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;border-top:1px solid var(--line);padding-top:12px}
+.tips{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:8px}
+.checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.checks label{display:flex;gap:8px;align-items:center;padding:10px 12px;border:2px solid var(--line);border-radius:12px;cursor:pointer;font-weight:500}
+.checks input{width:22px;height:22px;flex:none;accent-color:var(--navy)}
+.checks label:has(input:checked){border-color:var(--ok);background:var(--ok-bg)}
+/* 점검 한눈에 (오늘 화면) */
+.board{display:flex;flex-direction:column;gap:14px}
+.verdict{display:flex;gap:14px;align-items:center}
+.light{width:54px;height:54px;border-radius:50%;flex:none;display:grid;place-items:center;font-family:var(--f-display);font-size:1.7rem;color:var(--surface)}
+.light.over{background:var(--over)} .light.soon{background:var(--soon)} .light.ok{background:var(--ok)} .light.unk{background:var(--unk)}
+.verdict b{font-size:1.25rem;display:block;line-height:1.3}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+@media (max-width:480px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
+.tile{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--surface);cursor:pointer;text-align:left;min-width:0;min-height:68px}
+.tile:hover{border-color:var(--ink2)}
+.tile .tx{min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.tile .tx b{font-size:.98rem;overflow-wrap:anywhere}
+.tile .tx span{font-size:.86rem;font-variant-numeric:tabular-nums}
+.tile.over{background:var(--over-bg);border-color:var(--over)} .tile.over .tx span{color:var(--over);font-weight:700}
+.tile.soon{background:var(--soon-bg);border-color:var(--soon)} .tile.soon .tx span{color:var(--soon);font-weight:700}
+.tile.ok .tx span{color:var(--ink2)}
+.tile.unk{border-style:dashed} .tile.unk .tx span{color:var(--unk)}
+.ring{flex:none;width:40px;height:40px}
+.ring circle{fill:none;stroke-width:5}
+.ring .bg{stroke:var(--surface2)} .tile.over .ring .bg,.tile.soon .ring .bg{stroke:var(--surface)}
+.ring .fg{stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%}
+.ring.over .fg{stroke:var(--over)} .ring.soon .fg{stroke:var(--soon)} .ring.ok .fg{stroke:var(--ok)}
+.ring text{font-family:var(--f-body);font-weight:700;font-size:15px;fill:var(--ink2);text-anchor:middle}
+.ring.over text{fill:var(--over)} .ring.soon text{fill:var(--soon)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;color:var(--ink2);font-size:.86rem}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+.sub{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:12px}
+.warn{color:var(--soon);font-weight:700;font-size:.85rem}
+.bulk{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center}
+.bulk .in{min-height:46px;padding:6px 10px}
+@media (max-width:480px){.bulk{grid-template-columns:repeat(2,minmax(0,1fr))} .bulk b{grid-column:1/-1}}
+select.in{appearance:auto}
+/* v4: 점검 폴더 (오늘 화면에서 접어 둠) */
+.fold{padding:0;overflow:hidden}
+.fold>summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:16px 18px;min-height:72px}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary .light{width:44px;height:44px;font-size:1.3rem}
+.fold>summary .open{margin-left:auto;font-weight:700;color:var(--navy);white-space:nowrap}
+.fold[open]>summary .open .c{display:none} .fold:not([open])>summary .open .o{display:none}
+.fold[open]>summary{border-bottom:1px solid var(--line)}
+.fold>.board{border:0;border-radius:0}
+/* v4: 자주 하는 운행 바로 적기 */
+.quick{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.quick .btn{flex-direction:column;align-items:flex-start;text-align:left;gap:2px;min-height:64px}
+.quick .btn small{font-weight:500;color:var(--ink2);font-size:.86rem}
+/* v4: 표에 바로 적기 (종이 일지처럼 한 줄씩) */
+tr.entry td{background:var(--soon-bg);vertical-align:top;white-space:normal}
+tr.entry .in{min-height:42px;padding:4px 8px;font-size:.95rem}
+tr.entry .in.k{width:92px;text-align:right;font-variant-numeric:tabular-nums}
+tr.entry .in.t{width:104px} tr.entry .in.d{width:148px} tr.entry .in.n{width:110px} tr.entry .in.s{width:64px;text-align:center}
+tr.entry label{display:flex;gap:6px;align-items:center;font-size:.9rem;font-weight:500;margin-top:6px;white-space:nowrap}
+tr.entry input[type=checkbox]{width:20px;height:20px;accent-color:var(--navy)}
+.entryhelp{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.credit{text-align:center;color:var(--ink2);font-size:.85rem;padding:18px 0 8px;border-top:1px solid var(--line)}
+/* 암호 칸 + 눈 단추 */
+.pinbox{position:relative}
+.pinbox .in{padding-right:64px}
+.pinbox .eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:48px;height:44px;border:0;border-radius:10px;background:none;color:var(--ink2);cursor:pointer;display:grid;place-items:center}
+.pinbox .eye:hover{background:var(--surface2)} .pinbox .eye[aria-pressed="true"]{color:var(--navy)}
+/* v4: 사용 방법 */
+.steps{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:10px}
+.steps li b{color:var(--ink)}
+.howto{display:flex;flex-direction:column;gap:12px}
+.howto h3{display:flex;gap:8px;align-items:center}
+.key{display:inline-block;border:1px solid var(--line);background:var(--surface2);border-radius:6px;padding:0 7px;font-weight:700;font-size:.92rem;white-space:nowrap}
+#printArea{display:none}
+@media print{
+  body{background:#fff;color:#000;padding:0;font-size:11pt}
+  .wrap,.toast,dialog{display:none!important}
+  #printArea{display:block}
+}
+@media (prefers-reduced-motion: no-preference){ .btn,.chip{transition:border-color .15s,background .15s} }
+</style>
+
+<div class="wrap" id="app">
+  <div class="top">
+    <div class="brand">
+      <svg width="46" height="34" viewBox="0 0 46 34" aria-hidden="true"><rect x="1" y="5" width="42" height="21" rx="5" fill="#ffc400"/><rect x="5" y="9" width="9" height="8" rx="1.5" fill="#16233a"/><rect x="16" y="9" width="9" height="8" rx="1.5" fill="#16233a"/><rect x="27" y="9" width="12" height="8" rx="1.5" fill="#16233a"/><rect x="1" y="19" width="42" height="3" fill="#16233a"/><circle cx="12" cy="27" r="5" fill="#16233a"/><circle cx="12" cy="27" r="2" fill="#cfd6e0"/><circle cx="33" cy="27" r="5" fill="#16233a"/><circle cx="33" cy="27" r="2" fill="#cfd6e0"/></svg>
+      <div><b>차량 지킴이</b><br><span id="centerName">지역아동센터 차량 점검 알림 · 운행일지</span></div>
+    </div>
+    <div class="topr"><button class="btn sm" data-act="help">사용 방법</button><button class="btn sm fb" id="fbBtn" data-act="fb" hidden>의견 보내기</button><div class="sync" id="sync" role="status"><i></i><span>불러오는 중…</span></div></div>
+  </div>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div id="view" role="tabpanel"></div>
+  <footer class="credit">만든 사람: jeong hwan · 무단 배포 금지</footer>
+</div>
+<dialog id="dlg"></dialog>
+<input type="file" id="restoreFile" accept=".json,application/json" hidden>
+<div id="printArea"></div>
+
+<script>
+'use strict';
+/* ============ 1. 규칙 (AI 없이 계산) — 이 파일이 계산식의 유일한 원본이다 ============ */
+// 점검 항목과 기본 주기. 일반 권장값이며 차량 취급설명서가 우선한다. 설정에서 차량별로 고칠 수 있다.
+// ev:false 인 항목은 전기차에서 숨긴다.
+var ITEMS=[
+ {k:'oil',   n:'엔진오일', full:'엔진오일·오일필터', km:10000, mo:12, skm:5000, smo:6, ev:false, tip:'엔진 속 부품이 닳지 않게 해 주는 기름'},
+ {k:'airf',  n:'공기 필터', full:'에어클리너(공기 필터)', km:20000, mo:24, skm:10000, smo:12, ev:false, tip:'엔진으로 들어가는 공기의 먼지를 거름'},
+ {k:'cabin', n:'에어컨 필터', full:'에어컨 필터', km:15000, mo:12, tip:'차 안으로 들어오는 공기를 거름. 아이들 호흡기와 관련'},
+ {k:'rot',   n:'타이어 위치', full:'타이어 위치 교환', km:10000, mo:0, tip:'앞뒤 타이어 자리를 바꿔 고르게 닳게 함'},
+ {k:'tire',  n:'타이어 교체', full:'타이어 교체', km:50000, mo:60, tip:'홈 깊이 1.6mm 아래면 바로 교체'},
+ {k:'pad',   n:'브레이크 패드', full:'브레이크 패드', km:40000, mo:0, tip:'차를 세우는 부품. 끽 소리가 나면 바로 점검'},
+ {k:'bfluid',n:'브레이크액', full:'브레이크액', km:40000, mo:24, tip:'브레이크 힘을 전달하는 액체'},
+ {k:'cool',  n:'냉각수', full:'냉각수(부동액)', km:40000, mo:24, tip:'엔진이나 배터리가 과열되지 않게 식혀 줌'},
+ {k:'batt',  n:'배터리', full:'배터리(시동용)', km:60000, mo:36, tip:'시동을 거는 전기. 겨울 전에 점검'},
+ {k:'atf',   n:'변속기 오일', full:'변속기 오일', km:100000, mo:0, ev:false, tip:'변속기를 부드럽게 해 주는 기름'},
+ {k:'wiper', n:'와이퍼', full:'와이퍼', km:0, mo:12, tip:'줄이 생기거나 소리가 나면 교체'}
+];
+var FUELS=['경유','휘발유','LPG','전기'];
+var PURPOSES=['등원','하원','체험활동','병원 동행','업무','기타'];
+var SOON_DAYS=30;
+// 운행일지의 차량점검내용. pre:true는 운행 전, false는 운행 후에 보는 것.
+var CHECKS=[{k:'tire',n:'타이어',pre:true},{k:'lamp',n:'전조등·방향지시등',pre:true},{k:'belt',n:'안전띠',pre:true},{k:'door',n:'차 문',pre:true},{k:'sleep',n:'하차확인장치',pre:true},{k:'off',n:'운행 후 하차 확인',pre:false}];
+// 예전 기록(운행 전 점검/하차 확인 두 칸)도 같은 모양으로 읽는다
+function checksOf(t){
+  if(t.checks) return t.checks;
+  var out=[]; CHECKS.forEach(function(c){ if(c.pre?t.pre:t.post) out.push(c.k); }); return out;
+}
+function checkText(t){
+  var have=checksOf(t), miss=CHECKS.filter(function(c){return have.indexOf(c.k)<0;}).map(function(c){return c.n;});
+  var s=miss.length===0?'이상 없음 ('+CHECKS.length+'항목 점검)':have.length===0?'점검 안 함':'점검 '+have.length+'/'+CHECKS.length+' · 안 본 것: '+miss.join(', ');
+  return s+(t.checkNote?' · '+t.checkNote:'');
+}
+// 철마다 챙길 것. 일반적인 관리 요령이며 차량 설명서와 정비소 안내가 우선한다.
+var SEASONS=[
+ {m:[12,1,2],name:'겨울철',line:'추운 아침에는 시동이 잘 안 걸릴 수 있어요. 배터리와 부동액을 봐 주세요.',items:['배터리: 3년이 넘었으면 정비소에서 상태를 재 보세요','부동액(냉각수): 양이 눈금 사이에 있는지 보세요','타이어: 공기압이 낮아지기 쉬워요. 홈이 얕으면 눈길에 미끄러져요','워셔액: 겨울용(얼지 않는 것)으로 채워 주세요','앞 유리 성에: 출발 5분 전에 히터를 틀어 시야를 확보하세요','눈·얼음이 있는 날은 평소보다 일찍 출발하고 천천히 다녀요']},
+ {m:[3,4,5],name:'봄철',line:'황사와 꽃가루가 많은 때예요. 에어컨 필터를 봐 주세요.',items:['에어컨 필터: 아이들 호흡기를 위해 봄에 한 번 갈아 주세요','세차: 겨울에 묻은 제설제(염화칼슘)를 차 아래까지 씻어 내세요','와이퍼: 겨울을 지나며 고무가 굳었는지 보세요','타이어: 공기압을 다시 맞춰 주세요']},
+ {m:[6,7],name:'장마철',line:'비가 많이 오는 때예요. 와이퍼와 타이어 홈을 봐 주세요.',items:['와이퍼: 줄이 생기거나 소리가 나면 갈아 주세요','타이어: 홈이 얕으면 빗길에 미끄러져요 (1.6mm 아래면 교체)','전조등·브레이크등: 비 오는 날은 낮에도 켜요. 불이 다 들어오는지 보세요','앞 유리 김 서림: 에어컨을 앞 유리 쪽으로 틀어요','물이 고인 길은 돌아가고, 빗길에서는 속도를 줄여요','에어컨 필터: 눅눅한 냄새가 나면 갈아 주세요']},
+ {m:[8],name:'한여름',line:'더위에 엔진이 뜨거워지기 쉬워요. 냉각수와 에어컨을 봐 주세요.',items:['냉각수: 양이 눈금 사이에 있는지 보세요. 계기판 온도 바늘이 올라가면 바로 세워요','에어컨: 바람이 시원하지 않으면 정비소에 가요','타이어: 뜨거운 길에서는 공기압이 중요해요','차 안에 아이가 남지 않았는지 꼭 확인해요. 여름 차 안은 금방 뜨거워져요']},
+ {m:[9,10,11],name:'가을철',line:'겨울이 오기 전에 미리 챙겨 두면 편해요. 배터리와 히터를 봐 주세요.',items:['배터리: 추워지기 전에 정비소에서 상태를 재 보세요','히터: 따뜻한 바람이 잘 나오는지 틀어 보세요','부동액(냉각수): 2년이 넘었으면 정비소에 물어보세요','타이어: 홈 깊이와 공기압을 봐 주세요','해가 일찍 져요. 전조등이 다 들어오는지 보세요']}
+];
+function seasonOf(dateStr){var m=+String(dateStr).split('-')[1]; for(var i=0;i<SEASONS.length;i++) if(SEASONS[i].m.indexOf(m)>=0) return SEASONS[i]; return SEASONS[0];}
+// 노란 차 캐릭터 '노랑이'가 하는 말
+function mascotSay(al){
+  var over=al.filter(function(a){return a.st==='over';}), soon=al.filter(function(a){return a.st==='soon';}), ok=al.filter(function(a){return a.st==='ok';});
+  function names(x){return x.slice(0,2).map(function(a){return a.name;}).join(', ')+(x.length>2?' 등':'');}
+  if(over.length) return {mood:'over',head:'점검할 시기가 지났어요. 신경 써 주세요!',sub:names(over)+(over.length>1?'을(를) 먼저':'부터')+' 챙겨 주세요.'+(soon.length?' 곧 챙길 것도 '+soon.length+'가지 있어요.':'')};
+  if(soon.length) return {mood:'soon',head:'점검할 시기예요. 신경 써 주세요!',sub:names(soon)+' 차례가 다가오고 있어요.'};
+  if(ok.length) return {mood:'ok',head:'지금은 모두 괜찮아요. 고마워요!',sub:'운행하고 나서 기록만 남겨 주세요.'};
+  return {mood:'unk',head:'아직 제 정비 기록이 없어요.',sub:'마지막으로 교환한 날을 알려 주시면 다음 시기를 챙겨 드릴게요.'};
+}
+function soonKm(interval){return Math.min(2000,Math.max(500,Math.round(interval*0.1)));}
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function today(){return ymd(new Date());}
+function parseD(s){var p=String(s).split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
+function addMonths(s,m){var d=parseD(s),day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+m);var last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return ymd(d);}
+function addDays(s,n){var d=parseD(s);d.setDate(d.getDate()+n);return ymd(d);}
+function daysBetween(a,b){return Math.round((parseD(b)-parseD(a))/86400000);}
+function fmtKm(n){return String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+function fmtD(s){if(!s)return '';var p=s.split('-');return p[0]+'.'+p[1]+'.'+p[2]+'.';}
+function fmtMD(s){var p=s.split('-');return (+p[1])+'월 '+(+p[2])+'일';}
+function vals(o){return Object.keys(o||{}).map(function(k){return o[k];});}
+function itemsFor(v){return ITEMS.filter(function(it){return !(v&&v.fuel==='전기'&&it.ev===false);});}
+function intervalOf(v,it){
+  var o=(v.intervals||{})[it.k];
+  if(o) return {km:+o.km||0, mo:+o.mo||0};
+  if(v.severe && it.skm) return {km:it.skm, mo:it.smo};
+  return {km:it.km, mo:it.mo};
+}
+// 현재 주행거리 = 등록한 계기판 숫자, 차량에 적어 둔 최신 km(odo), 운행일지 도착 km, 정비 기록 km 중 가장 큰 값
+function odoOf(S,vid){
+  var v=S.vehicles[vid]||{}, m=Math.max(+v.baseOdo||0,+v.odo||0);
+  vals(S.trips).forEach(function(t){if(t.vid===vid&&+t.endKm>m)m=+t.endKm;});
+  vals(S.services).forEach(function(s){if(s.vid===vid&&+s.km>m)m=+s.km;});
+  return m;
+}
+// 최근 30일 하루 평균 주행거리 (예상 날짜 계산용). 기록이 7일 치보다 적으면 0.
+function dailyKm(S,vid,now){
+  var from=addDays(now,-30), sum=0, first=null;
+  vals(S.trips).forEach(function(t){ if(t.vid===vid&&t.date>=from&&t.date<=now){sum+=(+t.endKm)-(+t.startKm); if(!first||t.date<first)first=t.date;} });
+  if(!first||daysBetween(first,now)<7) return 0;
+  return sum/Math.max(1,daysBetween(first,now)+1);
+}
+function lastService(S,vid,k){
+  var best=null;
+  vals(S.services).forEach(function(s){ if(s.vid===vid&&s.item===k&&(!best||s.date>best.date||(s.date===best.date&&(+s.km||0)>(+best.km||0)))) best=s; });
+  return best;
+}
+// 한 항목의 상태를 계산한다. 근거(why) 문장을 함께 만든다.
+function itemStatus(S,vid,it,now){
+  var v=S.vehicles[vid], iv=intervalOf(v,it), last=lastService(S,vid,it.k), odo=odoOf(S,vid);
+  var src=v.ivChecked?'차량 설명서로 확인한 주기':'일반 권장 주기';
+  if(!last) return {st:'unk', label:'기록 없음', why:'마지막으로 교환한 날을 아직 적지 않았어요. 정비소 스티커나 명세서를 보고 적어 주세요.', iv:iv, ratio:0, src:src};
+  var parts=[], st='ok', ratio=0, kmLeft=null, dLeft=null, dueD=null, estD=null;
+  if(iv.km>0 && +last.km>0){
+    var due=+last.km+iv.km; kmLeft=due-odo; ratio=Math.max(ratio,(odo-last.km)/iv.km);
+    parts.push('마지막 교환 '+fmtKm(last.km)+'km + 주기 '+fmtKm(iv.km)+'km = '+fmtKm(due)+'km, 지금 '+fmtKm(odo)+'km');
+    if(kmLeft<0) st='over'; else if(kmLeft<=soonKm(iv.km)) st='soon';
+    var dk=dailyKm(S,vid,now); if(dk>0&&kmLeft>=0) estD=addDays(now,Math.round(kmLeft/dk));
+  }
+  if(iv.mo>0){
+    dueD=addMonths(last.date,iv.mo); dLeft=daysBetween(now,dueD);
+    ratio=Math.max(ratio,daysBetween(last.date,now)/Math.max(1,daysBetween(last.date,dueD)));
+    parts.push('마지막 교환 '+fmtD(last.date)+' + '+iv.mo+'개월 = '+fmtD(dueD));
+    if(dLeft<0) st='over'; else if(dLeft<=SOON_DAYS && st!=='over') st='soon';
+  }
+  var label;
+  if(st==='over'){ label=(kmLeft!==null&&kmLeft<0)?fmtKm(-kmLeft)+'km 지남':(-dLeft)+'일 지남'; }
+  else { var a=[]; if(kmLeft!==null)a.push(fmtKm(kmLeft)+'km 남음'); if(dLeft!==null)a.push(dLeft+'일 남음'); label=a.join(' · ')||'기록됨'; }
+  if(iv.km>0 && !(+last.km>0)) parts.push('교환 때 km를 적지 않아 날짜로만 계산');
+  // 달력에 넣을 날짜: 날짜 기한과 km 예상일 중 빠른 쪽
+  var when=dueD; if(estD&&(!when||estD<when)) when=estD;
+  return {st:st,label:label,why:parts.join(' / '),iv:iv,ratio:ratio,last:last,kmLeft:kmLeft,dLeft:dLeft,estD:estD,when:when,src:src};
+}
+// 날짜로만 보는 항목 (정기검사, 보험, 안전교육)
+function dateStatus(due,now){
+  if(!due) return {st:'unk',label:'날짜 없음'};
+  var d=daysBetween(now,due);
+  return {st:d<0?'over':(d<=SOON_DAYS?'soon':'ok'), label:d<0?(-d)+'일 지남':d+'일 남음', dLeft:d};
+}
+function driversOf(S){
+  return Object.keys(S.drivers||{}).map(function(id){var d=S.drivers[id];return {id:id,name:d.name,edu:d.edu,ts:d.ts||0};}).sort(function(a,b){return a.ts-b.ts;});
+}
+function allAlerts(S,vid,now){
+  var out=[], v=S.vehicles[vid]; if(!v) return out;
+  itemsFor(v).forEach(function(it){var r=itemStatus(S,vid,it,now); out.push({kind:'item',key:it.k,name:it.n,full:it.full,tip:it.tip,st:r.st,label:r.label,why:r.why,ratio:r.ratio,estD:r.estD,when:r.when,src:r.src,iv:r.iv});});
+  var a=dateStatus(v.inspDate,now); out.push({kind:'insp',key:'insp',name:'정기검사',full:'자동차 정기검사',tip:'자동차등록증에 적힌 검사 유효기간',st:a.st,label:a.label,when:v.inspDate||null,ratio:a.st==='unk'?0:Math.min(1,1-a.dLeft/365),why:v.inspDate?'검사 유효기간 만료일 '+fmtD(v.inspDate)+' (자동차등록증에 적힌 날짜)':'자동차등록증의 검사 유효기간 만료일을 적어 주세요.'});
+  var b=dateStatus(v.insDate,now); out.push({kind:'ins',key:'ins',name:'보험 만기',full:'자동차 보험 만기',tip:'보험증권에 적힌 끝 날짜',st:b.st,label:b.label,when:v.insDate||null,ratio:b.st==='unk'?0:Math.min(1,1-b.dLeft/365),why:v.insDate?'보험 만기일 '+fmtD(v.insDate):'보험증권의 만기일을 적어 주세요.'});
+  driversOf(S).forEach(function(d){
+    var due=d.edu?addMonths(d.edu,24):''; var c=dateStatus(due,now);
+    out.push({kind:'edu',key:'edu:'+d.id,name:d.name+' 안전교육',full:d.name+' 선생님 통학버스 안전교육',tip:'2년마다 다시 받는 교육 (주기는 관할 안내로 확인)',st:c.st,label:c.label,when:due||null,ratio:c.st==='unk'?0:Math.min(1,1-c.dLeft/730),why:d.edu?'마지막 교육 '+fmtD(d.edu)+' + 2년 = '+fmtD(due):'마지막 교육 받은 날을 적어 주세요.'});
+  });
+  var rank={over:0,soon:1,unk:3,ok:2};
+  out.forEach(function(x,i){x.i=i;});
+  out.sort(function(x,y){return rank[x.st]-rank[y.st]||y.ratio-x.ratio||x.i-y.i;});
+  return out;
+}
+// 한 차량의 운행을 날짜·km 순으로 놓고, 앞 기록의 도착 km와 출발 km가 다른 기록을 찾는다.
+function gaps(S,vid){
+  var list=Object.keys(S.trips).filter(function(id){return S.trips[id].vid===vid;}).map(function(id){return {id:id,t:S.trips[id]};});
+  list.sort(function(a,b){return a.t.date<b.t.date?-1:a.t.date>b.t.date?1:(+a.t.startKm)-(+b.t.startKm);});
+  var out={};
+  for(var i=1;i<list.length;i++){ var d=(+list[i].t.startKm)-(+list[i-1].t.endKm); if(d!==0) out[list[i].id]=d; }
+  return out;
+}
+function isLocked(S,month){return ((S.settings||{}).locks||[]).indexOf(month)>=0;}
+
+/* 한글(HWPX) 파일의 바탕. python-hwpx의 빈 문서에 운행일지용 글자·문단·테두리 모양을 더해 만든 것이다 (자동 생성, 고치지 않는다). */
+var HWPX_IDS={"cTitle": "7", "cBold": "8", "cNorm": "9", "cInfo": "10", "pCenter": "20", "pLeft": "21", "pRight": "22", "bLine": "3", "bHead": "4", "bNone": "5"};
+var HWPX_BASE={"mimetype": "application/hwp+zip", "version.xml": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?><hv:HCFVersion xmlns:hv=\"http://www.hancom.co.kr/hwpml/2011/version\" tagetApplication=\"WORDPROCESSOR\" major=\"5\" minor=\"1\" micro=\"1\" buildNumber=\"0\" os=\"1\" xmlVersion=\"1.5\" application=\"Hancom Office Hangul\" appVersion=\"13, 0, 0, 1408 WIN32LEWindows_10\"/>", "settings.xml": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?><ha:HWPApplicationSetting xmlns:ha=\"http://www.hancom.co.kr/hwpml/2011/app\" xmlns:config=\"urn:oasis:names:tc:opendocument:xmlns:config:1.0\"><ha:CaretPosition listIDRef=\"0\" paraIDRef=\"0\" pos=\"16\"/></ha:HWPApplicationSetting>", "META-INF/container.xml": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?><ocf:container xmlns:ocf=\"urn:oasis:names:tc:opendocument:xmlns:container\" xmlns:hpf=\"http://www.hancom.co.kr/schema/2011/hpf\"><ocf:rootfiles><ocf:rootfile full-path=\"Contents/content.hpf\" media-type=\"application/hwpml-package+xml\"/><ocf:rootfile full-path=\"Preview/PrvText.txt\" media-type=\"text/plain\"/><ocf:rootfile full-path=\"META-INF/container.rdf\" media-type=\"application/rdf+xml\"/></ocf:rootfiles></ocf:container>", "META-INF/container.rdf": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?><rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"><rdf:Description rdf:about=\"\"><ns0:hasPart xmlns:ns0=\"http://www.hancom.co.kr/hwpml/2016/meta/pkg#\" rdf:resource=\"Contents/header.xml\"/></rdf:Description><rdf:Description rdf:about=\"Contents/header.xml\"><rdf:type rdf:resource=\"http://www.hancom.co.kr/hwpml/2016/meta/pkg#HeaderFile\"/></rdf:Description><rdf:Description rdf:about=\"\"><ns0:hasPart xmlns:ns0=\"http://www.hancom.co.kr/hwpml/2016/meta/pkg#\" rdf:resource=\"Contents/section0.xml\"/></rdf:Description><rdf:Description rdf:about=\"Contents/section0.xml\"><rdf:type rdf:resource=\"http://www.hancom.co.kr/hwpml/2016/meta/pkg#SectionFile\"/></rdf:Description><rdf:Description rdf:about=\"\"><rdf:type rdf:resource=\"http://www.hancom.co.kr/hwpml/2016/meta/pkg#Document\"/></rdf:Description></rdf:RDF>", "META-INF/manifest.xml": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?><odf:manifest xmlns:odf=\"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0\"/>", "Contents/header.xml": "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n<hh:head xmlns:ha=\"http://www.hancom.co.kr/hwpml/2011/app\" xmlns:hp=\"http://www.hancom.co.kr/hwpml/2011/paragraph\" xmlns:hp10=\"http://www.hancom.co.kr/hwpml/2016/paragraph\" xmlns:hs=\"http://www.hancom.co.kr/hwpml/2011/section\" xmlns:hc=\"http://www.hancom.co.kr/hwpml/2011/core\" xmlns:hh=\"http://www.hancom.co.kr/hwpml/2011/head\" xmlns:hhs=\"http://www.hancom.co.kr/hwpml/2011/history\" xmlns:hm=\"http://www.hancom.co.kr/hwpml/2011/master-page\" xmlns:hpf=\"http://www.hancom.co.kr/schema/2011/hpf\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:opf=\"http://www.idpf.org/2007/opf/\" xmlns:ooxmlchart=\"http://www.hancom.co.kr/hwpml/2016/ooxmlchart\" xmlns:hwpunitchar=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\" xmlns:epub=\"http://www.idpf.org/2007/ops\" xmlns:config=\"urn:oasis:names:tc:opendocument:xmlns:config:1.0\" version=\"1.5\" secCnt=\"1\"><hh:beginNum page=\"1\" footnote=\"1\" endnote=\"1\" pic=\"1\" tbl=\"1\" equation=\"1\"/><hh:refList><hh:fontfaces itemCnt=\"7\"><hh:fontface lang=\"HANGUL\" fontCnt=\"3\"><hh:font id=\"0\" face=\"함초롬돋움\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"1\" face=\"함초롬바탕\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"2\" face=\"맑은 고딕\" type=\"TTF\" isEmbedded=\"0\"/></hh:fontface><hh:fontface lang=\"LATIN\" fontCnt=\"3\"><hh:font id=\"0\" face=\"함초롬돋움\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"1\" face=\"함초롬바탕\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"2\" face=\"맑은 고딕\" type=\"TTF\" isEmbedded=\"0\"/></hh:fontface><hh:fontface lang=\"HANJA\" fontCnt=\"3\"><hh:font id=\"0\" face=\"함초롬돋움\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"1\" face=\"함초롬바탕\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"2\" face=\"맑은 고딕\" type=\"TTF\" isEmbedded=\"0\"/></hh:fontface><hh:fontface lang=\"JAPANESE\" fontCnt=\"3\"><hh:font id=\"0\" face=\"함초롬돋움\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"1\" face=\"함초롬바탕\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"2\" face=\"맑은 고딕\" type=\"TTF\" isEmbedded=\"0\"/></hh:fontface><hh:fontface lang=\"OTHER\" fontCnt=\"3\"><hh:font id=\"0\" face=\"함초롬돋움\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"1\" face=\"함초롬바탕\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"2\" face=\"맑은 고딕\" type=\"TTF\" isEmbedded=\"0\"/></hh:fontface><hh:fontface lang=\"SYMBOL\" fontCnt=\"3\"><hh:font id=\"0\" face=\"함초롬돋움\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"1\" face=\"함초롬바탕\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"2\" face=\"맑은 고딕\" type=\"TTF\" isEmbedded=\"0\"/></hh:fontface><hh:fontface lang=\"USER\" fontCnt=\"3\"><hh:font id=\"0\" face=\"함초롬돋움\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"1\" face=\"함초롬바탕\" type=\"TTF\" isEmbedded=\"0\"><hh:typeInfo familyType=\"FCAT_GOTHIC\" weight=\"6\" proportion=\"4\" contrast=\"0\" strokeVariation=\"1\" armStyle=\"1\" letterform=\"1\" midline=\"1\" xHeight=\"1\"/></hh:font><hh:font id=\"2\" face=\"맑은 고딕\" type=\"TTF\" isEmbedded=\"0\"/></hh:fontface></hh:fontfaces><hh:borderFills itemCnt=\"5\"><hh:borderFill id=\"1\" threeD=\"0\" shadow=\"0\" centerLine=\"NONE\" breakCellSeparateLine=\"0\"><hh:slash type=\"NONE\" Crooked=\"0\" isCounter=\"0\"/><hh:backSlash type=\"NONE\" Crooked=\"0\" isCounter=\"0\"/><hh:leftBorder type=\"NONE\" width=\"0.1 mm\" color=\"#000000\"/><hh:rightBorder type=\"NONE\" width=\"0.1 mm\" color=\"#000000\"/><hh:topBorder type=\"NONE\" width=\"0.1 mm\" color=\"#000000\"/><hh:bottomBorder type=\"NONE\" width=\"0.1 mm\" color=\"#000000\"/><hh:diagonal type=\"SOLID\" width=\"0.1 mm\" color=\"#000000\"/></hh:borderFill><hh:borderFill id=\"2\" threeD=\"0\" shadow=\"0\" centerLine=\"NONE\" breakCellSeparateLine=\"0\"><hh:slash type=\"NONE\" Crooked=\"0\" isCounter=\"0\"/><hh:backSlash type=\"NONE\" Crooked=\"0\" isCounter=\"0\"/><hh:leftBorder type=\"NONE\" width=\"0.1 mm\" color=\"#000000\"/><hh:rightBorder type=\"NONE\" width=\"0.1 mm\" color=\"#000000\"/><hh:topBorder type=\"NONE\" width=\"0.1 mm\" color=\"#000000\"/><hh:bottomBorder type=\"NONE\" width=\"0.1 mm\" color=\"#000000\"/><hh:diagonal type=\"SOLID\" width=\"0.1 mm\" color=\"#000000\"/><hc:fillBrush><hc:winBrush faceColor=\"none\" hatchColor=\"#999999\" alpha=\"0\"/></hc:fillBrush></hh:borderFill><hh:borderFill id=\"3\" threeD=\"0\" shadow=\"0\" centerLine=\"NONE\" breakCellSeparateLine=\"0\"><hh:slash type=\"NONE\" Crooked=\"0\" isCounter=\"0\"/><hh:backSlash type=\"NONE\" Crooked=\"0\" isCounter=\"0\"/><hh:leftBorder type=\"SOLID\" width=\"0.12 mm\" color=\"#000000\"/><hh:rightBorder type=\"SOLID\" width=\"0.12 mm\" color=\"#000000\"/><hh:topBorder type=\"SOLID\" width=\"0.12 mm\" color=\"#000000\"/><hh:bottomBorder type=\"SOLID\" width=\"0.12 mm\" color=\"#000000\"/><hh:diagonal type=\"NONE\" width=\"0.12 mm\" color=\"#000000\"/></hh:borderFill><hh:borderFill id=\"4\" threeD=\"0\" shadow=\"0\" centerLine=\"NONE\" breakCellSeparateLine=\"0\"><hh:slash type=\"NONE\" Crooked=\"0\" isCounter=\"0\"/><hh:backSlash type=\"NONE\" Crooked=\"0\" isCounter=\"0\"/><hh:leftBorder type=\"SOLID\" width=\"0.12 mm\" color=\"#000000\"/><hh:rightBorder type=\"SOLID\" width=\"0.12 mm\" color=\"#000000\"/><hh:topBorder type=\"SOLID\" width=\"0.12 mm\" color=\"#000000\"/><hh:bottomBorder type=\"SOLID\" width=\"0.12 mm\" color=\"#000000\"/><hh:diagonal type=\"NONE\" width=\"0.12 mm\" color=\"#000000\"/><hc:fillBrush><hc:winBrush faceColor=\"#E8E8E8\" hatchColor=\"#FF000000\" alpha=\"0\"/></hc:fillBrush></hh:borderFill><hh:borderFill id=\"5\" threeD=\"0\" shadow=\"0\" centerLine=\"NONE\" breakCellSeparateLine=\"0\"><hh:slash type=\"NONE\" Crooked=\"0\" isCounter=\"0\"/><hh:backSlash type=\"NONE\" Crooked=\"0\" isCounter=\"0\"/><hh:leftBorder type=\"NONE\" width=\"0.1 mm\" color=\"#FFFFFF\"/><hh:rightBorder type=\"NONE\" width=\"0.1 mm\" color=\"#FFFFFF\"/><hh:topBorder type=\"NONE\" width=\"0.1 mm\" color=\"#FFFFFF\"/><hh:bottomBorder type=\"NONE\" width=\"0.1 mm\" color=\"#FFFFFF\"/><hh:diagonal type=\"NONE\" width=\"0.1 mm\" color=\"#FFFFFF\"/></hh:borderFill></hh:borderFills><hh:charProperties itemCnt=\"11\"><hh:charPr id=\"0\" height=\"1000\" textColor=\"#000000\" shadeColor=\"none\" useFontSpace=\"0\" useKerning=\"0\" symMark=\"NONE\" borderFillIDRef=\"2\"><hh:fontRef hangul=\"1\" latin=\"1\" hanja=\"1\" japanese=\"1\" other=\"1\" symbol=\"1\" user=\"1\"/><hh:ratio hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:spacing hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:relSz hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:offset hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:underline type=\"NONE\" shape=\"SOLID\" color=\"#000000\"/><hh:strikeout shape=\"NONE\" color=\"#000000\"/><hh:outline type=\"NONE\"/><hh:shadow type=\"NONE\" color=\"#C0C0C0\" offsetX=\"10\" offsetY=\"10\"/></hh:charPr><hh:charPr id=\"1\" height=\"1000\" textColor=\"#000000\" shadeColor=\"none\" useFontSpace=\"0\" useKerning=\"0\" symMark=\"NONE\" borderFillIDRef=\"2\"><hh:fontRef hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:ratio hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:spacing hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:relSz hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:offset hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:underline type=\"NONE\" shape=\"SOLID\" color=\"#000000\"/><hh:strikeout shape=\"NONE\" color=\"#000000\"/><hh:outline type=\"NONE\"/><hh:shadow type=\"NONE\" color=\"#C0C0C0\" offsetX=\"10\" offsetY=\"10\"/></hh:charPr><hh:charPr id=\"2\" height=\"900\" textColor=\"#000000\" shadeColor=\"none\" useFontSpace=\"0\" useKerning=\"0\" symMark=\"NONE\" borderFillIDRef=\"2\"><hh:fontRef hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:ratio hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:spacing hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:relSz hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:offset hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:underline type=\"NONE\" shape=\"SOLID\" color=\"#000000\"/><hh:strikeout shape=\"NONE\" color=\"#000000\"/><hh:outline type=\"NONE\"/><hh:shadow type=\"NONE\" color=\"#C0C0C0\" offsetX=\"10\" offsetY=\"10\"/></hh:charPr><hh:charPr id=\"3\" height=\"900\" textColor=\"#000000\" shadeColor=\"none\" useFontSpace=\"0\" useKerning=\"0\" symMark=\"NONE\" borderFillIDRef=\"2\"><hh:fontRef hangul=\"1\" latin=\"1\" hanja=\"1\" japanese=\"1\" other=\"1\" symbol=\"1\" user=\"1\"/><hh:ratio hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:spacing hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:relSz hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:offset hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:underline type=\"NONE\" shape=\"SOLID\" color=\"#000000\"/><hh:strikeout shape=\"NONE\" color=\"#000000\"/><hh:outline type=\"NONE\"/><hh:shadow type=\"NONE\" color=\"#C0C0C0\" offsetX=\"10\" offsetY=\"10\"/></hh:charPr><hh:charPr id=\"4\" height=\"900\" textColor=\"#000000\" shadeColor=\"none\" useFontSpace=\"0\" useKerning=\"0\" symMark=\"NONE\" borderFillIDRef=\"2\"><hh:fontRef hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:ratio hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:spacing hangul=\"-5\" latin=\"-5\" hanja=\"-5\" japanese=\"-5\" other=\"-5\" symbol=\"-5\" user=\"-5\"/><hh:relSz hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:offset hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:underline type=\"NONE\" shape=\"SOLID\" color=\"#000000\"/><hh:strikeout shape=\"NONE\" color=\"#000000\"/><hh:outline type=\"NONE\"/><hh:shadow type=\"NONE\" color=\"#C0C0C0\" offsetX=\"10\" offsetY=\"10\"/></hh:charPr><hh:charPr id=\"5\" height=\"1600\" textColor=\"#2E74B5\" shadeColor=\"none\" useFontSpace=\"0\" useKerning=\"0\" symMark=\"NONE\" borderFillIDRef=\"2\"><hh:fontRef hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:ratio hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:spacing hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:relSz hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:offset hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:underline type=\"NONE\" shape=\"SOLID\" color=\"#000000\"/><hh:strikeout shape=\"NONE\" color=\"#000000\"/><hh:outline type=\"NONE\"/><hh:shadow type=\"NONE\" color=\"#C0C0C0\" offsetX=\"10\" offsetY=\"10\"/></hh:charPr><hh:charPr id=\"6\" height=\"1100\" textColor=\"#000000\" shadeColor=\"none\" useFontSpace=\"0\" useKerning=\"0\" symMark=\"NONE\" borderFillIDRef=\"2\"><hh:fontRef hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:ratio hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:spacing hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:relSz hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:offset hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:underline type=\"NONE\" shape=\"SOLID\" color=\"#000000\"/><hh:strikeout shape=\"NONE\" color=\"#000000\"/><hh:outline type=\"NONE\"/><hh:shadow type=\"NONE\" color=\"#C0C0C0\" offsetX=\"10\" offsetY=\"10\"/></hh:charPr><hh:charPr height=\"1800\" textColor=\"#000000\" shadeColor=\"none\" useFontSpace=\"0\" useKerning=\"0\" symMark=\"NONE\" borderFillIDRef=\"2\" id=\"7\"><hh:fontRef hangul=\"2\" latin=\"2\" hanja=\"2\" japanese=\"2\" other=\"2\" symbol=\"2\" user=\"2\"/><hh:ratio hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:spacing hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:relSz hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:offset hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:bold/><hh:underline type=\"NONE\" shape=\"SOLID\" color=\"#000000\"/><hh:strikeout shape=\"NONE\" color=\"#000000\"/><hh:outline type=\"NONE\"/><hh:shadow type=\"NONE\" color=\"#C0C0C0\" offsetX=\"10\" offsetY=\"10\"/></hh:charPr><hh:charPr height=\"900\" textColor=\"#000000\" shadeColor=\"none\" useFontSpace=\"0\" useKerning=\"0\" symMark=\"NONE\" borderFillIDRef=\"2\" id=\"8\"><hh:fontRef hangul=\"2\" latin=\"2\" hanja=\"2\" japanese=\"2\" other=\"2\" symbol=\"2\" user=\"2\"/><hh:ratio hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:spacing hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:relSz hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:offset hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:bold/><hh:underline type=\"NONE\" shape=\"SOLID\" color=\"#000000\"/><hh:strikeout shape=\"NONE\" color=\"#000000\"/><hh:outline type=\"NONE\"/><hh:shadow type=\"NONE\" color=\"#C0C0C0\" offsetX=\"10\" offsetY=\"10\"/></hh:charPr><hh:charPr height=\"900\" textColor=\"#000000\" shadeColor=\"none\" useFontSpace=\"0\" useKerning=\"0\" symMark=\"NONE\" borderFillIDRef=\"2\" id=\"9\"><hh:fontRef hangul=\"2\" latin=\"2\" hanja=\"2\" japanese=\"2\" other=\"2\" symbol=\"2\" user=\"2\"/><hh:ratio hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:spacing hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:relSz hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:offset hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:underline type=\"NONE\" shape=\"SOLID\" color=\"#000000\"/><hh:strikeout shape=\"NONE\" color=\"#000000\"/><hh:outline type=\"NONE\"/><hh:shadow type=\"NONE\" color=\"#C0C0C0\" offsetX=\"10\" offsetY=\"10\"/></hh:charPr><hh:charPr height=\"1000\" textColor=\"#000000\" shadeColor=\"none\" useFontSpace=\"0\" useKerning=\"0\" symMark=\"NONE\" borderFillIDRef=\"2\" id=\"10\"><hh:fontRef hangul=\"2\" latin=\"2\" hanja=\"2\" japanese=\"2\" other=\"2\" symbol=\"2\" user=\"2\"/><hh:ratio hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:spacing hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:relSz hangul=\"100\" latin=\"100\" hanja=\"100\" japanese=\"100\" other=\"100\" symbol=\"100\" user=\"100\"/><hh:offset hangul=\"0\" latin=\"0\" hanja=\"0\" japanese=\"0\" other=\"0\" symbol=\"0\" user=\"0\"/><hh:underline type=\"NONE\" shape=\"SOLID\" color=\"#000000\"/><hh:strikeout shape=\"NONE\" color=\"#000000\"/><hh:outline type=\"NONE\"/><hh:shadow type=\"NONE\" color=\"#C0C0C0\" offsetX=\"10\" offsetY=\"10\"/></hh:charPr></hh:charProperties><hh:tabProperties itemCnt=\"3\"><hh:tabPr id=\"0\" autoTabLeft=\"0\" autoTabRight=\"0\"/><hh:tabPr id=\"1\" autoTabLeft=\"1\" autoTabRight=\"0\"/><hh:tabPr id=\"2\" autoTabLeft=\"0\" autoTabRight=\"1\"/></hh:tabProperties><hh:numberings itemCnt=\"1\"><hh:numbering id=\"1\" start=\"0\"><hh:paraHead start=\"1\" level=\"1\" align=\"LEFT\" useInstWidth=\"1\" autoIndent=\"1\" widthAdjust=\"0\" textOffsetType=\"PERCENT\" textOffset=\"50\" numFormat=\"DIGIT\" charPrIDRef=\"4294967295\" checkable=\"0\">^1.</hh:paraHead><hh:paraHead start=\"1\" level=\"2\" align=\"LEFT\" useInstWidth=\"1\" autoIndent=\"1\" widthAdjust=\"0\" textOffsetType=\"PERCENT\" textOffset=\"50\" numFormat=\"HANGUL_SYLLABLE\" charPrIDRef=\"4294967295\" checkable=\"0\">^2.</hh:paraHead><hh:paraHead start=\"1\" level=\"3\" align=\"LEFT\" useInstWidth=\"1\" autoIndent=\"1\" widthAdjust=\"0\" textOffsetType=\"PERCENT\" textOffset=\"50\" numFormat=\"DIGIT\" charPrIDRef=\"4294967295\" checkable=\"0\">^3)</hh:paraHead><hh:paraHead start=\"1\" level=\"4\" align=\"LEFT\" useInstWidth=\"1\" autoIndent=\"1\" widthAdjust=\"0\" textOffsetType=\"PERCENT\" textOffset=\"50\" numFormat=\"HANGUL_SYLLABLE\" charPrIDRef=\"4294967295\" checkable=\"0\">^4)</hh:paraHead><hh:paraHead start=\"1\" level=\"5\" align=\"LEFT\" useInstWidth=\"1\" autoIndent=\"1\" widthAdjust=\"0\" textOffsetType=\"PERCENT\" textOffset=\"50\" numFormat=\"DIGIT\" charPrIDRef=\"4294967295\" checkable=\"0\">(^5)</hh:paraHead><hh:paraHead start=\"1\" level=\"6\" align=\"LEFT\" useInstWidth=\"1\" autoIndent=\"1\" widthAdjust=\"0\" textOffsetType=\"PERCENT\" textOffset=\"50\" numFormat=\"HANGUL_SYLLABLE\" charPrIDRef=\"4294967295\" checkable=\"0\">(^6)</hh:paraHead><hh:paraHead start=\"1\" level=\"7\" align=\"LEFT\" useInstWidth=\"1\" autoIndent=\"1\" widthAdjust=\"0\" textOffsetType=\"PERCENT\" textOffset=\"50\" numFormat=\"CIRCLED_DIGIT\" charPrIDRef=\"4294967295\" checkable=\"1\">^7</hh:paraHead><hh:paraHead start=\"1\" level=\"8\" align=\"LEFT\" useInstWidth=\"1\" autoIndent=\"1\" widthAdjust=\"0\" textOffsetType=\"PERCENT\" textOffset=\"50\" numFormat=\"CIRCLED_HANGUL_SYLLABLE\" charPrIDRef=\"4294967295\" checkable=\"1\">^8</hh:paraHead><hh:paraHead start=\"1\" level=\"9\" align=\"LEFT\" useInstWidth=\"1\" autoIndent=\"1\" widthAdjust=\"0\" textOffsetType=\"PERCENT\" textOffset=\"50\" numFormat=\"HANGUL_JAMO\" charPrIDRef=\"4294967295\" checkable=\"0\"/><hh:paraHead start=\"1\" level=\"10\" align=\"LEFT\" useInstWidth=\"1\" autoIndent=\"1\" widthAdjust=\"0\" textOffsetType=\"PERCENT\" textOffset=\"50\" numFormat=\"ROMAN_SMALL\" charPrIDRef=\"4294967295\" checkable=\"1\"/></hh:numbering></hh:numberings><hh:paraProperties itemCnt=\"23\"><hh:paraPr id=\"0\" tabPrIDRef=\"0\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"BREAK_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"1\" tabPrIDRef=\"0\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"KEEP_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"1500\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"3000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"2\" tabPrIDRef=\"1\" condense=\"20\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hh:heading type=\"OUTLINE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"KEEP_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"1000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"2000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"3\" tabPrIDRef=\"1\" condense=\"20\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hh:heading type=\"OUTLINE\" idRef=\"0\" level=\"1\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"KEEP_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"2000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"4000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"4\" tabPrIDRef=\"1\" condense=\"20\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hh:heading type=\"OUTLINE\" idRef=\"0\" level=\"2\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"KEEP_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"3000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"6000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"5\" tabPrIDRef=\"1\" condense=\"20\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hh:heading type=\"OUTLINE\" idRef=\"0\" level=\"3\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"KEEP_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"4000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"8000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"6\" tabPrIDRef=\"1\" condense=\"20\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hh:heading type=\"OUTLINE\" idRef=\"0\" level=\"4\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"KEEP_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"5000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"10000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"7\" tabPrIDRef=\"1\" condense=\"20\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hh:heading type=\"OUTLINE\" idRef=\"0\" level=\"5\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"KEEP_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"6000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"12000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"8\" tabPrIDRef=\"1\" condense=\"20\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hh:heading type=\"OUTLINE\" idRef=\"0\" level=\"6\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"KEEP_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"7000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"14000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"9\" tabPrIDRef=\"0\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"BREAK_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"150\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"150\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"10\" tabPrIDRef=\"0\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"KEEP_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"-1310\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"130\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"-2620\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"130\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"11\" tabPrIDRef=\"0\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"LEFT\" vertical=\"BASELINE\"/><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"BREAK_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"130\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"130\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"12\" tabPrIDRef=\"1\" condense=\"20\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"LEFT\" vertical=\"BASELINE\"/><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"BREAK_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"1200\" unit=\"HWPUNIT\"/><hc:next value=\"300\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"2400\" unit=\"HWPUNIT\"/><hc:next value=\"600\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"13\" tabPrIDRef=\"2\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"LEFT\" vertical=\"BASELINE\"/><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"BREAK_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"700\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"1400\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"14\" tabPrIDRef=\"2\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"LEFT\" vertical=\"BASELINE\"/><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"BREAK_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"1100\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"700\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"2200\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"1400\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"15\" tabPrIDRef=\"2\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"LEFT\" vertical=\"BASELINE\"/><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"BREAK_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"2200\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"700\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"4400\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"1400\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"16\" tabPrIDRef=\"1\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/paragraph\"><hh:heading type=\"OUTLINE\" idRef=\"0\" level=\"8\"/></hp:case><hp:default><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/></hp:default></hp:switch><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"KEEP_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"9000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"18000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"17\" tabPrIDRef=\"1\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/paragraph\"><hh:heading type=\"OUTLINE\" idRef=\"0\" level=\"9\"/></hp:case><hp:default><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/></hp:default></hp:switch><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"KEEP_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"10000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"20000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"18\" tabPrIDRef=\"1\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/paragraph\"><hh:heading type=\"OUTLINE\" idRef=\"0\" level=\"7\"/></hp:case><hp:default><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/></hp:default></hp:switch><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"KEEP_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"8000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"16000\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr id=\"19\" tabPrIDRef=\"0\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\"><hh:align horizontal=\"JUSTIFY\" vertical=\"BASELINE\"/><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"KEEP_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"800\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"150\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"1600\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"150\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr tabPrIDRef=\"0\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\" id=\"20\"><hh:align horizontal=\"CENTER\" vertical=\"BASELINE\"/><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"BREAK_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr tabPrIDRef=\"0\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\" id=\"21\"><hh:align horizontal=\"LEFT\" vertical=\"BASELINE\"/><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"BREAK_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr><hh:paraPr tabPrIDRef=\"0\" condense=\"0\" fontLineHeight=\"0\" snapToGrid=\"1\" suppressLineNumbers=\"0\" checked=\"0\" textDir=\"LTR\" id=\"22\"><hh:align horizontal=\"RIGHT\" vertical=\"BASELINE\"/><hh:heading type=\"NONE\" idRef=\"0\" level=\"0\"/><hh:breakSetting breakLatinWord=\"KEEP_WORD\" breakNonLatinWord=\"BREAK_WORD\" widowOrphan=\"0\" keepWithNext=\"0\" keepLines=\"0\" pageBreakBefore=\"0\" lineWrap=\"BREAK\"/><hh:autoSpacing eAsianEng=\"0\" eAsianNum=\"0\"/><hp:switch><hp:case hp:required-namespace=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\"><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:case><hp:default><hh:margin><hc:intent value=\"0\" unit=\"HWPUNIT\"/><hc:left value=\"0\" unit=\"HWPUNIT\"/><hc:right value=\"0\" unit=\"HWPUNIT\"/><hc:prev value=\"0\" unit=\"HWPUNIT\"/><hc:next value=\"0\" unit=\"HWPUNIT\"/></hh:margin><hh:lineSpacing type=\"PERCENT\" value=\"160\" unit=\"HWPUNIT\"/></hp:default></hp:switch><hh:border borderFillIDRef=\"2\" offsetLeft=\"0\" offsetRight=\"0\" offsetTop=\"0\" offsetBottom=\"0\" connect=\"0\" ignoreMargin=\"0\"/></hh:paraPr></hh:paraProperties><hh:styles itemCnt=\"23\"><hh:style id=\"0\" type=\"PARA\" name=\"바탕글\" engName=\"Normal\" paraPrIDRef=\"0\" charPrIDRef=\"0\" nextStyleIDRef=\"0\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"1\" type=\"PARA\" name=\"본문\" engName=\"Body\" paraPrIDRef=\"1\" charPrIDRef=\"0\" nextStyleIDRef=\"1\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"2\" type=\"PARA\" name=\"개요 1\" engName=\"Outline 1\" paraPrIDRef=\"2\" charPrIDRef=\"0\" nextStyleIDRef=\"2\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"3\" type=\"PARA\" name=\"개요 2\" engName=\"Outline 2\" paraPrIDRef=\"3\" charPrIDRef=\"0\" nextStyleIDRef=\"3\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"4\" type=\"PARA\" name=\"개요 3\" engName=\"Outline 3\" paraPrIDRef=\"4\" charPrIDRef=\"0\" nextStyleIDRef=\"4\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"5\" type=\"PARA\" name=\"개요 4\" engName=\"Outline 4\" paraPrIDRef=\"5\" charPrIDRef=\"0\" nextStyleIDRef=\"5\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"6\" type=\"PARA\" name=\"개요 5\" engName=\"Outline 5\" paraPrIDRef=\"6\" charPrIDRef=\"0\" nextStyleIDRef=\"6\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"7\" type=\"PARA\" name=\"개요 6\" engName=\"Outline 6\" paraPrIDRef=\"7\" charPrIDRef=\"0\" nextStyleIDRef=\"7\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"8\" type=\"PARA\" name=\"개요 7\" engName=\"Outline 7\" paraPrIDRef=\"8\" charPrIDRef=\"0\" nextStyleIDRef=\"8\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"9\" type=\"PARA\" name=\"개요 8\" engName=\"Outline 8\" paraPrIDRef=\"18\" charPrIDRef=\"0\" nextStyleIDRef=\"9\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"10\" type=\"PARA\" name=\"개요 9\" engName=\"Outline 9\" paraPrIDRef=\"16\" charPrIDRef=\"0\" nextStyleIDRef=\"10\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"11\" type=\"PARA\" name=\"개요 10\" engName=\"Outline 10\" paraPrIDRef=\"17\" charPrIDRef=\"0\" nextStyleIDRef=\"11\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"12\" type=\"CHAR\" name=\"쪽 번호\" engName=\"Page Number\" paraPrIDRef=\"0\" charPrIDRef=\"1\" nextStyleIDRef=\"0\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"13\" type=\"CHAR\" name=\"줄 번호\" engName=\"Line Number\" paraPrIDRef=\"0\" charPrIDRef=\"0\" nextStyleIDRef=\"0\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"14\" type=\"PARA\" name=\"머리말\" engName=\"Header\" paraPrIDRef=\"9\" charPrIDRef=\"2\" nextStyleIDRef=\"14\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"15\" type=\"PARA\" name=\"각주\" engName=\"Footnote\" paraPrIDRef=\"10\" charPrIDRef=\"3\" nextStyleIDRef=\"15\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"16\" type=\"PARA\" name=\"미주\" engName=\"Endnote\" paraPrIDRef=\"10\" charPrIDRef=\"3\" nextStyleIDRef=\"16\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"17\" type=\"PARA\" name=\"메모\" engName=\"Memo\" paraPrIDRef=\"11\" charPrIDRef=\"4\" nextStyleIDRef=\"17\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"18\" type=\"PARA\" name=\"차례 제목\" engName=\"TOC Heading\" paraPrIDRef=\"12\" charPrIDRef=\"5\" nextStyleIDRef=\"18\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"19\" type=\"PARA\" name=\"차례 1\" engName=\"TOC 1\" paraPrIDRef=\"13\" charPrIDRef=\"6\" nextStyleIDRef=\"19\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"20\" type=\"PARA\" name=\"차례 2\" engName=\"TOC 2\" paraPrIDRef=\"14\" charPrIDRef=\"6\" nextStyleIDRef=\"20\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"21\" type=\"PARA\" name=\"차례 3\" engName=\"TOC 3\" paraPrIDRef=\"15\" charPrIDRef=\"6\" nextStyleIDRef=\"21\" langID=\"1042\" lockForm=\"0\"/><hh:style id=\"22\" type=\"PARA\" name=\"캡션\" engName=\"Caption\" paraPrIDRef=\"19\" charPrIDRef=\"0\" nextStyleIDRef=\"22\" langID=\"1042\" lockForm=\"0\"/></hh:styles></hh:refList><hh:compatibleDocument targetProgram=\"HWP201X\"><hh:layoutCompatibility/></hh:compatibleDocument><hh:docOption><hh:linkinfo path=\"\" pageInherit=\"0\" footnoteInherit=\"0\"/></hh:docOption><hh:metaTag>{\"name\":\"\"}</hh:metaTag><hh:trackchageConfig flags=\"56\"/></hh:head>", "Contents/content.hpf": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?><opf:package xmlns:ha=\"http://www.hancom.co.kr/hwpml/2011/app\" xmlns:hp=\"http://www.hancom.co.kr/hwpml/2011/paragraph\" xmlns:hp10=\"http://www.hancom.co.kr/hwpml/2016/paragraph\" xmlns:hs=\"http://www.hancom.co.kr/hwpml/2011/section\" xmlns:hc=\"http://www.hancom.co.kr/hwpml/2011/core\" xmlns:hh=\"http://www.hancom.co.kr/hwpml/2011/head\" xmlns:hhs=\"http://www.hancom.co.kr/hwpml/2011/history\" xmlns:hm=\"http://www.hancom.co.kr/hwpml/2011/master-page\" xmlns:hpf=\"http://www.hancom.co.kr/schema/2011/hpf\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:opf=\"http://www.idpf.org/2007/opf/\" xmlns:ooxmlchart=\"http://www.hancom.co.kr/hwpml/2016/ooxmlchart\" xmlns:hwpunitchar=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\" xmlns:epub=\"http://www.idpf.org/2007/ops\" xmlns:config=\"urn:oasis:names:tc:opendocument:xmlns:config:1.0\" version=\"\" unique-identifier=\"\" id=\"\"><opf:metadata><opf:title/><opf:language>ko</opf:language><opf:meta name=\"creator\" content=\"text\">synthetic-fixture-author</opf:meta><opf:meta name=\"subject\" content=\"text\"/><opf:meta name=\"description\" content=\"text\"/><opf:meta name=\"lastsaveby\" content=\"text\">synthetic-fixture-author</opf:meta><opf:meta name=\"CreatedDate\" content=\"text\">2025-09-17T04:32:50Z</opf:meta><opf:meta name=\"ModifiedDate\" content=\"text\">2025-09-17T04:33:13Z</opf:meta><opf:meta name=\"date\" content=\"text\">2025년 9월 17일 수요일 오후 1:32:50</opf:meta><opf:meta name=\"keyword\" content=\"text\"/></opf:metadata><opf:manifest><opf:item id=\"header\" href=\"Contents/header.xml\" media-type=\"application/xml\"/><opf:item id=\"section0\" href=\"Contents/section0.xml\" media-type=\"application/xml\"/><opf:item id=\"settings\" href=\"settings.xml\" media-type=\"application/xml\"/></opf:manifest><opf:spine><opf:itemref idref=\"header\" linear=\"yes\"/><opf:itemref idref=\"section0\" linear=\"yes\"/></opf:spine></opf:package>"};
+var HWPX_SEC_HEAD="<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n<hs:sec xmlns:ha=\"http://www.hancom.co.kr/hwpml/2011/app\" xmlns:hp=\"http://www.hancom.co.kr/hwpml/2011/paragraph\" xmlns:hp10=\"http://www.hancom.co.kr/hwpml/2016/paragraph\" xmlns:hs=\"http://www.hancom.co.kr/hwpml/2011/section\" xmlns:hc=\"http://www.hancom.co.kr/hwpml/2011/core\" xmlns:hh=\"http://www.hancom.co.kr/hwpml/2011/head\" xmlns:hhs=\"http://www.hancom.co.kr/hwpml/2011/history\" xmlns:hm=\"http://www.hancom.co.kr/hwpml/2011/master-page\" xmlns:hpf=\"http://www.hancom.co.kr/schema/2011/hpf\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:opf=\"http://www.idpf.org/2007/opf/\" xmlns:ooxmlchart=\"http://www.hancom.co.kr/hwpml/2016/ooxmlchart\" xmlns:hwpunitchar=\"http://www.hancom.co.kr/hwpml/2016/HwpUnitChar\" xmlns:epub=\"http://www.idpf.org/2007/ops\" xmlns:config=\"urn:oasis:names:tc:opendocument:xmlns:config:1.0\"><hp:p id=\"0\" paraPrIDRef=\"0\" styleIDRef=\"0\" pageBreak=\"0\" columnBreak=\"0\" merged=\"0\"><hp:run charPrIDRef=\"0\"><hp:secPr id=\"\" textDirection=\"HORIZONTAL\" spaceColumns=\"1134\" tabStop=\"8000\" tabStopVal=\"4000\" tabStopUnit=\"HWPUNIT\" outlineShapeIDRef=\"1\" memoShapeIDRef=\"0\" textVerticalWidthHead=\"0\" masterPageCnt=\"0\"><hp:grid lineGrid=\"0\" charGrid=\"0\" wonggojiFormat=\"0\"/><hp:startNum pageStartsOn=\"BOTH\" page=\"0\" pic=\"0\" tbl=\"0\" equation=\"0\"/><hp:visibility hideFirstHeader=\"0\" hideFirstFooter=\"0\" hideFirstMasterPage=\"0\" border=\"SHOW_ALL\" fill=\"SHOW_ALL\" hideFirstPageNum=\"0\" hideFirstEmptyLine=\"0\" showLineNumber=\"0\"/><hp:lineNumberShape restartType=\"0\" countBy=\"0\" distance=\"0\" startNumber=\"0\"/><hp:pagePr landscape=\"NARROWLY\" width=\"59528\" height=\"84189\" gutterType=\"LEFT_ONLY\"><hp:margin header=\"0\" footer=\"0\" gutter=\"0\" left=\"3402\" right=\"3402\" top=\"2835\" bottom=\"2835\"/></hp:pagePr><hp:footNotePr><hp:autoNumFormat type=\"DIGIT\" userChar=\"\" prefixChar=\"\" suffixChar=\")\" supscript=\"0\"/><hp:noteLine length=\"-1\" type=\"SOLID\" width=\"0.12 mm\" color=\"#000000\"/><hp:noteSpacing betweenNotes=\"283\" belowLine=\"567\" aboveLine=\"850\"/><hp:numbering type=\"CONTINUOUS\" newNum=\"1\"/><hp:placement place=\"EACH_COLUMN\" beneathText=\"0\"/></hp:footNotePr><hp:endNotePr><hp:autoNumFormat type=\"DIGIT\" userChar=\"\" prefixChar=\"\" suffixChar=\")\" supscript=\"0\"/><hp:noteLine length=\"14692344\" type=\"SOLID\" width=\"0.12 mm\" color=\"#000000\"/><hp:noteSpacing betweenNotes=\"0\" belowLine=\"567\" aboveLine=\"850\"/><hp:numbering type=\"CONTINUOUS\" newNum=\"1\"/><hp:placement place=\"END_OF_DOCUMENT\" beneathText=\"0\"/></hp:endNotePr><hp:pageBorderFill type=\"BOTH\" borderFillIDRef=\"1\" textBorder=\"PAPER\" headerInside=\"0\" footerInside=\"0\" fillArea=\"PAPER\"><hp:offset left=\"1417\" right=\"1417\" top=\"1417\" bottom=\"1417\"/></hp:pageBorderFill><hp:pageBorderFill type=\"EVEN\" borderFillIDRef=\"1\" textBorder=\"PAPER\" headerInside=\"0\" footerInside=\"0\" fillArea=\"PAPER\"><hp:offset left=\"1417\" right=\"1417\" top=\"1417\" bottom=\"1417\"/></hp:pageBorderFill><hp:pageBorderFill type=\"ODD\" borderFillIDRef=\"1\" textBorder=\"PAPER\" headerInside=\"0\" footerInside=\"0\" fillArea=\"PAPER\"><hp:offset left=\"1417\" right=\"1417\" top=\"1417\" bottom=\"1417\"/></hp:pageBorderFill></hp:secPr><hp:ctrl><hp:colPr id=\"\" type=\"NEWSPAPER\" layout=\"LEFT\" colCount=\"1\" sameSz=\"1\" sameGap=\"0\"/></hp:ctrl></hp:run><hp:run charPrIDRef=\"0\"><hp:t/></hp:run><hp:linesegarray><hp:lineseg textpos=\"0\" vertpos=\"0\" vertsize=\"1000\" textheight=\"1000\" baseline=\"850\" spacing=\"600\" horzpos=\"0\" horzsize=\"42520\" flags=\"393216\"/></hp:linesegarray></hp:p>";
+var HWPX_PRV_IMG='iVBORw0KGgoAAAANSUhEUgAAAtQAAAQACAIAAABOMFmkAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAHYcAAB2HAY/l8WUAABEaSURBVHhe7dahAQAwDICw/v906+eHSiQXMAsAEJo3AAD8ZD4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABS5gMASJkPACBlPgCAlPkAAFLmAwBImQ8AIGU+AICU+QAAUuYDAEiZDwAgZT4AgJT5AABSB/d3CzH9WllmAAAAAElFTkSuQmCC';
+/* ============ 한글(HWPX) 파일 만들기 ============ */
+// 한글 2014 이후 버전이 여는 .hwpx 파일을 브라우저에서 바로 만든다. 서버나 외부 라이브러리를 쓰지 않는다.
+var HWPX_UNIT_MM=283.465;          // 1mm = 283.465 HWPUNIT
+var HWPX_TEXT_W=77385;            // A4 가로, 좌우 여백 12mm일 때 글자 영역 너비
+function hx(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+var hwpxSeq=1000;
+function hwpxId(){return String(++hwpxSeq);}
+// 문단 하나. lines를 주면 한 칸 안에서 줄을 나눈다.
+function hwpxPara(text,paraId,charId){
+  var lines=String(text==null?'':text).split('\n');
+  return lines.map(function(t){return '<hp:p id="'+hwpxId()+'" paraPrIDRef="'+paraId+'" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="'+charId+'">'+(t?'<hp:t>'+hx(t)+'</hp:t>':'<hp:t/>')+'</hp:run></hp:p>';}).join('');
+}
+// 표 칸 하나
+function hwpxCell(c,col,row,w,h){
+  return '<hp:tc name="" header="0" hasMargin="0" protect="0" editable="0" dirty="0" borderFillIDRef="'+(c.bf||HWPX_IDS.bLine)+'">'+
+    '<hp:subList id="" textDirection="HORIZONTAL" lineWrap="BREAK" vertAlign="CENTER" linkListIDRef="0" linkListNextIDRef="0" textWidth="0" textHeight="0" hasTextRef="0" hasNumRef="0">'+
+    hwpxPara(c.t,c.p||HWPX_IDS.pCenter,c.c||HWPX_IDS.cNorm)+'</hp:subList>'+
+    '<hp:cellAddr colAddr="'+col+'" rowAddr="'+row+'"/><hp:cellSpan colSpan="1" rowSpan="'+(c.rs||1)+'"/>'+
+    '<hp:cellSz width="'+w+'" height="'+h+'"/><hp:cellMargin left="283" right="283" top="141" bottom="141"/></hp:tc>';
+}
+// 표. rows: [[{t,bf,p,c,rs,skip}...]], widths: HWPUNIT 배열, heights: 줄마다 높이
+function hwpxTable(rows,widths,heights,paraId){
+  var W=widths.reduce(function(a,b){return a+b;},0), H=heights.reduce(function(a,b){return a+b;},0);
+  var body=rows.map(function(r,ri){
+    return '<hp:tr>'+r.map(function(c,ci){ if(c.skip) return ''; var h=heights[ri]; if(c.rs>1) for(var k=1;k<c.rs;k++) h+=heights[ri+k]; return hwpxCell(c,ci,ri,widths[ci],h);}).join('')+'</hp:tr>';
+  }).join('');
+  return '<hp:p id="'+hwpxId()+'" paraPrIDRef="'+(paraId||HWPX_IDS.pLeft)+'" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="'+HWPX_IDS.cNorm+'">'+
+    '<hp:tbl id="'+hwpxId()+'" zOrder="0" numberingType="TABLE" textWrap="TOP_AND_BOTTOM" textFlow="BOTH_SIDES" lock="0" dropcapstyle="None" pageBreak="CELL" repeatHeader="1" rowCnt="'+rows.length+'" colCnt="'+widths.length+'" cellSpacing="0" borderFillIDRef="'+HWPX_IDS.bLine+'" noAdjust="0">'+
+    '<hp:sz width="'+W+'" widthRelTo="ABSOLUTE" height="'+H+'" heightRelTo="ABSOLUTE" protect="0"/>'+
+    '<hp:pos treatAsChar="1" affectLSpacing="0" flowWithText="1" allowOverlap="0" holdAnchorAndSO="0" vertRelTo="PARA" horzRelTo="COLUMN" vertAlign="TOP" horzAlign="LEFT" vertOffset="0" horzOffset="0"/>'+
+    '<hp:outMargin left="0" right="0" top="0" bottom="0"/><hp:inMargin left="283" right="283" top="141" bottom="141"/>'+body+'</hp:tbl></hp:run></hp:p>';
+}
+// 비율로 준 너비를 글자 영역 너비에 맞춘다
+function hwpxWidths(ratio,total){
+  var sum=ratio.reduce(function(a,b){return a+b;},0), out=ratio.map(function(r){return Math.floor(total*r/sum);});
+  out[out.length-1]+=total-out.reduce(function(a,b){return a+b;},0); return out;
+}
+// 운행일지 한 달 치를 한글 파일 내용(section0.xml)으로 만든다
+function hwpxTripSection(vid,month){
+  var I=HWPX_IDS, v=S.vehicles[vid], list=tripsOf(vid,month), total=0, kids=0;
+  var appr=(S.settings.approvers||'담당자/시설장').split('/').map(function(s){return s.trim();}).filter(Boolean);
+  var out=HWPX_SEC_HEAD;
+  // 결재란 (오른쪽)
+  var aw=[Math.round(7*HWPX_UNIT_MM)].concat(appr.map(function(){return Math.round(22*HWPX_UNIT_MM);}));
+  var ar=[[{t:'결\n재',rs:2,bf:I.bHead,c:I.cBold}].concat(appr.map(function(a){return {t:a,bf:I.bHead,c:I.cBold};})),
+          [{skip:true}].concat(appr.map(function(){return {t:''};}))];
+  out+=hwpxTable(ar,aw,[Math.round(6*HWPX_UNIT_MM),Math.round(15*HWPX_UNIT_MM)],I.pRight);
+  out+=hwpxPara('차량 운행일지',I.pCenter,I.cTitle);
+  out+=hwpxPara((S.settings.center||'')+'   '+month.replace('-','년 ')+'월   차량: '+v.name+' '+(v.plate||'')+(isLocked(S,month)?'   (마감)':''),I.pLeft,I.cInfo);
+  var head=['번호','일자','출발\n시간','도착\n시간','운행 목적','출발 km','도착 km','운행\n거리','운전자\n확인','동승자\n확인','차량 점검 내용','탑승\n아동','비고'];
+  var w=hwpxWidths([8,15,11,11,22,15,15,12,18,18,55,9,24],HWPX_TEXT_W);
+  var rows=[head.map(function(h){return {t:h,bf:I.bHead,c:I.cBold};})], hs=[Math.round(10*HWPX_UNIT_MM)];
+  list.forEach(function(e,i){
+    var t=e[1], d=t.endKm-t.startKm; total+=d; kids+=(+t.riders||0);
+    rows.push([{t:i+1},{t:t.date.slice(5).replace('-','.')+'.'},{t:t.startTime||''},{t:t.endTime||''},{t:t.purpose+(t.dest?'\n'+t.dest:'')},
+      {t:fmtKm(t.startKm),p:I.pRight},{t:fmtKm(t.endKm),p:I.pRight},{t:fmtKm(d),p:I.pRight},
+      {t:t.driver+(t.drvOk?'\n(확인)':'')},{t:(t.guardian||'')+(t.guardian&&t.guardOk?'\n(확인)':'')},
+      {t:checkText(t),p:I.pLeft},{t:t.riders||0},{t:t.memo||'',p:I.pLeft}]);
+    hs.push(Math.round(9*HWPX_UNIT_MM));
+  });
+  for(var k=list.length;k<Math.max(list.length,10);k++){ rows.push(head.map(function(){return {t:''};})); hs.push(Math.round(9*HWPX_UNIT_MM)); }
+  rows.push([{t:'합계',bf:I.bHead,c:I.cBold},{t:list.length+'회',bf:I.bHead,c:I.cBold}].concat([1,2,3,4,5].map(function(){return {t:'',bf:I.bHead};}))
+    .concat([{t:fmtKm(total)+'km',bf:I.bHead,c:I.cBold,p:I.pRight},{t:'',bf:I.bHead},{t:'',bf:I.bHead},{t:'',bf:I.bHead},{t:kids+'명',bf:I.bHead,c:I.cBold},{t:'',bf:I.bHead}]));
+  hs.push(Math.round(8*HWPX_UNIT_MM));
+  out+=hwpxTable(rows,w,hs,I.pLeft);
+  return out+'</hs:sec>';
+}
+/* ---- 압축하지 않는 ZIP 만들기 (한글 파일의 겉봉투) ---- */
+var CRC_T=(function(){var t=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(b){var c=0xFFFFFFFF;for(var i=0;i<b.length;i++)c=CRC_T[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function utf8(s){return new TextEncoder().encode(s);}
+function zipStore(files){
+  var parts=[], central=[], off=0;
+  function u16(v){return [v&255,(v>>>8)&255];} function u32(v){return [v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255];}
+  files.forEach(function(f){
+    var name=utf8(f.name), data=f.data, crc=crc32(data);
+    var local=[].concat([0x50,0x4b,0x03,0x04],u16(20),u16(0x0800),u16(0),u16(0),u16(0x21),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0));
+    parts.push(new Uint8Array(local),name,data);
+    central.push(new Uint8Array([].concat([0x50,0x4b,0x01,0x02],u16(20),u16(20),u16(0x0800),u16(0),u16(0),u16(0x21),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(off))),name);
+    off+=local.length+name.length+data.length;
+  });
+  var csize=central.reduce(function(a,b){return a+b.length;},0);
+  var end=new Uint8Array([].concat([0x50,0x4b,0x05,0x06],u16(0),u16(0),u16(files.length),u16(files.length),u32(csize),u32(off),u16(0)));
+  var all=parts.concat(central,[end]), len=all.reduce(function(a,b){return a+b.length;},0), buf=new Uint8Array(len), p=0;
+  all.forEach(function(a){buf.set(a,p);p+=a.length;}); return buf;
+}
+function b64bytes(s){var bin=atob(s), u=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); return u;}
+function buildHwpx(vid,month){
+  var B=HWPX_BASE, title='차량 운행일지 '+month, now=new Date().toISOString().replace(/\.\d+Z$/,'Z');
+  var hpf=B['Contents/content.hpf'].replace('<opf:title/>','<opf:title>'+hx(title)+'</opf:title>').replace(/synthetic-fixture-author/g,hx(me||'차량 지킴이'))
+    .replace(/(name="CreatedDate" content="text">)[^<]*/,'$1'+now).replace(/(name="ModifiedDate" content="text">)[^<]*/,'$1'+now).replace(/(name="date" content="text">)[^<]*/,'$1'+today());
+  var files=[ // mimetype은 맨 앞에, 압축 없이 둔다 (한글 파일 규칙)
+    {name:'mimetype',data:utf8(B['mimetype'])},{name:'version.xml',data:utf8(B['version.xml'])},
+    {name:'Contents/header.xml',data:utf8(B['Contents/header.xml'])},{name:'Contents/section0.xml',data:utf8(hwpxTripSection(vid,month))},
+    {name:'Preview/PrvText.txt',data:utf8(title)},{name:'settings.xml',data:utf8(B['settings.xml'])},{name:'Preview/PrvImage.png',data:b64bytes(HWPX_PRV_IMG)},
+    {name:'META-INF/container.rdf',data:utf8(B['META-INF/container.rdf'])},{name:'Contents/content.hpf',data:utf8(hpf)},
+    {name:'META-INF/container.xml',data:utf8(B['META-INF/container.xml'])},{name:'META-INF/manifest.xml',data:utf8(B['META-INF/manifest.xml'])}];
+  return zipStore(files);
+}
+/* ============ 2. 저장소 (세 가지 중 하나를 자동으로 고른다) ============ */
+var SCHEMA=2;
+var DEF_SET={center:'',approvers:'담당자/시설장',locks:[],emails:''};
+var S={vehicles:{},trips:{},services:{},drivers:{},feedback:{},settings:Object.assign({},DEF_SET)};
+var COLLS=['vehicles','trips','services','drivers'];
+var store={mode:'loading'};
+var LS={get:function(k,d){try{var v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+var outbox=LS.get('cj.outbox',[]);          // 보내지 못한 기록. 인터넷이 돌아오면 다시 보낸다.
+var me=LS.get('cj.me','');                   // 이 기기를 쓰는 사람 이름 (누가 적었는지 남기는 데 씀)
+function newId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function setSync(){
+  var el=document.getElementById('sync'), t={loading:['','불러오는 중…'],cloud:['on','PC·휴대폰 함께 저장 중'],sheet:['on','구글 시트에 저장 중'],local:['local','이 기기에만 저장']}[store.mode];
+  if(outbox.length&&store.mode!=='local') t=['local','보내지 못한 기록 '+outbox.length+'건 · 다시 보내는 중'];
+  el.className='sync '+t[0]; el.lastElementChild.textContent=t[1];
+  var fb=document.getElementById('fbBtn'); if(fb) fb.hidden=!(store.mode==='sheet'||store.mode==='cloud');
+}
+function applyOp(op){ if(op.c==='settings'){ if(op.data)S.settings=Object.assign({},DEF_SET,op.data); } else if(op.data) S[op.c][op.id]=op.data; else delete S[op.c][op.id]; }
+function setAll(d){
+  COLLS.forEach(function(c){S[c]=d[c]||{};}); S.settings=Object.assign({},DEF_SET,d.settings||{});
+  outbox.forEach(applyOp);   // 아직 못 보낸 기록은 화면에 그대로 둔다
+  migrate();
+}
+// 예전 형식(설정 안의 운전자 목록)을 운전자 문서로 옮긴다
+function migrate(){
+  var old=S.settings.drivers; if(!old||!old.length) return;
+  if(!Object.keys(S.drivers).length) old.forEach(function(d,i){put('drivers',newId(),{name:d.name,edu:d.edu||'',ts:Date.now()+i});});
+  var st=Object.assign({},S.settings); delete st.drivers; put('settings','center',st);
+}
+function queue(op){ outbox.push(op); LS.set('cj.outbox',outbox); setSync(); }
+function flush(){
+  if(!outbox.length||!store.raw||flush.busy) return; flush.busy=true;
+  var op=outbox[0];
+  store.raw(op).then(function(){ outbox.shift(); LS.set('cj.outbox',outbox); flush.busy=false; setSync(); if(outbox.length) flush(); else toast('보내지 못했던 기록을 모두 저장했어요.'); },
+    function(){ flush.busy=false; });
+}
+function send(op){
+  if(!store.raw) return;
+  if(outbox.length){ queue(op); flush(); return; }   // 순서를 지키려고 밀린 것 뒤에 줄 세운다
+  store.raw(op).catch(function(e){
+    if(e&&e.retry){ queue(op); toast('인터넷이 약해요. 이 기기에 보관했다가 연결되면 다시 보낼게요.'); }
+    else toast((e&&e.msg)||'저장하지 못했어요. 보기 전용 권한일 수 있어요.');
+  });
+}
+function put(c,id,data){ applyOp({c:c,id:id,data:data}); send({c:c,id:id,data:data}); }
+// 여러 건을 한꺼번에 저장한다. 구글 시트판은 50건씩 묶어 한 번에 보낸다.
+function putMany(items,done){
+  items.forEach(function(it){applyOp(it);});
+  if(store.mode!=='sheet'){ items.forEach(function(it){send(it);}); if(done)done(items.length,0); return; }
+  var chunks=[]; for(var i=0;i<items.length;i+=50) chunks.push(items.slice(i,i+50));
+  var ok=0, bad=0;
+  (function next(k){
+    if(k>=chunks.length){ if(done)done(ok,bad); return; }
+    gcall({op:'putMany',items:chunks[k]}).then(function(r){ ok+=r.done; bad+=r.failed.length; next(k+1); },
+      function(e){ if(e&&e.retry){ chunks[k].forEach(queue); flush(); } else bad+=chunks[k].length; next(k+1); });
+  })(0);
+}
+function del(c,id){ applyOp({c:c,id:id,data:null}); send({c:c,id:id,data:null}); }
+
+function useLocal(){
+  var d=LS.get('cj.data',null); outbox=[]; if(d) setAll(d);
+  store={mode:'local', raw:function(){ LS.set('cj.data',{schema:SCHEMA,vehicles:S.vehicles,trips:S.trips,services:S.services,drivers:S.drivers,settings:S.settings}); return Promise.resolve(); }};
+  migrate(); setSync(); render();
+}
+/* --- 구글 시트판: 서버 함수 api() 하나만 부른다. 로그인 대신 센터 암호를 쓴다. --- */
+var pin=LS.get('cj.pin','');
+function gcall(req){
+  return new Promise(function(res,rej){
+    req.pin=pin; req.by=me;
+    google.script.run.withSuccessHandler(function(json){ var r=JSON.parse(json); if(r.ok) res(r.data); else rej({code:r.err,msg:r.msg}); })
+      .withFailureHandler(function(){ rej({retry:true}); }).api(JSON.stringify(req));
+  });
+}
+// 암호 칸: 처음에는 ●●●●로 가리고, 오른쪽 눈 단추를 누르면 보인다
+function pinBox(id){ return '<div class="pinbox"><input class="in km" type="password" id="'+id+'" inputmode="numeric" autocomplete="off"><button type="button" class="eye" data-act="pin-eye" data-v="'+id+'" aria-label="암호 보이기" aria-pressed="false">'+EYE[0]+'</button></div>'; }
+var EYE=['<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+ '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 20L20 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>'];
+function useSheet(){
+  store={mode:'loading'};
+  function start(){
+    store={mode:'sheet', raw:function(op){ return gcall(op.data?{op:'put',c:op.c,id:op.id,data:op.data}:{op:'del',c:op.c,id:op.id}).catch(function(e){ if(e.code==='pin'){askPin('암호가 바뀌었어요. 새 센터 암호를 적어 주세요.');} throw e; }); }};
+    setSync(); pull(); setInterval(pull,20000); setInterval(flush,30000); window.addEventListener('online',flush);
+  }
+  function pull(){ if(flush.busy) return; gcall({op:'getAll'}).then(function(d){ setAll(d); if(canRedraw()) render(); flush(); }, function(e){ if(e.code==='pin') askPin('센터 암호가 맞지 않아요.'); }); }
+  function askPin(msg){
+    openDlg('<header><h2>센터 암호</h2></header><div class="body"><p>'+esc(msg||'이 센터의 기록을 보려면 센터 암호를 적어 주세요. 한 번 적으면 이 기기가 기억해요.')+'</p>'+
+      '<div class="field"><label for="pinIn">센터 암호</label>'+pinBox('pinIn')+'</div>'+
+      '<div class="field"><label for="meIn">내 이름 <span class="muted small">(누가 적었는지 남겨요)</span></label><input class="in" id="meIn" value="'+esc(me)+'"></div><div id="pinErr" role="alert"></div></div>'+
+      '<footer><button type="button" class="btn main" data-act="pin-ok">들어가기</button></footer>');
+  }
+  function newPin(){
+    openDlg('<header><h2>센터 암호 정하기</h2></header><div class="body"><p>처음 여셨네요. 우리 센터 선생님만 쓸 수 있게 <b>센터 암호</b>를 정해 주세요. 다른 선생님에게는 이 주소와 암호를 함께 알려 주시면 돼요.</p>'+
+      '<div class="field"><label for="pinIn">센터 암호 (숫자 4자리 이상)</label>'+pinBox('pinIn')+'</div>'+
+      '<div class="field"><label for="meIn">내 이름</label><input class="in" id="meIn" value="'+esc(me)+'"></div><div id="pinErr" role="alert"></div></div>'+
+      '<footer><button type="button" class="btn main" data-act="pin-new">정하고 시작하기</button></footer>');
+  }
+  window.pinFlow={
+    ok:function(){ pin=$('pinIn').value.trim(); me=$('meIn').value.trim(); LS.set('cj.me',me);
+      gcall({op:'getAll'}).then(function(d){ LS.set('cj.pin',pin); setAll(d); closeDlg(); if(store.mode!=='sheet') start(); }, function(e){ $('pinErr').innerHTML='<div class="err">'+(e.code==='lock'?'여러 번 틀려서 10분 동안 잠겼어요.':e.retry?'인터넷 연결을 확인해 주세요.':'암호가 맞지 않아요.')+'</div>'; }); },
+    make:function(){ var p=$('pinIn').value.trim(); if(!/^\d{4,}$/.test(p)){ $('pinErr').innerHTML='<div class="err">숫자 4자리 이상으로 적어 주세요.</div>'; return; }
+      me=$('meIn').value.trim(); LS.set('cj.me',me); pin='';
+      gcall({op:'setPin',newPin:p}).then(function(){ pin=p; LS.set('cj.pin',pin); closeDlg(); start(); toast('센터 암호를 정했어요.'); }, function(e){ $('pinErr').innerHTML='<div class="err">'+(e.retry?'인터넷 연결을 확인해 주세요.':'이미 암호가 정해져 있어요. 화면을 새로 고쳐 주세요.')+'</div>'; }); }
+  };
+  gcall({op:'status'}).then(function(st){
+    if(!st.hasPin) newPin(); else if(!pin) askPin(); else gcall({op:'getAll'}).then(function(d){ setAll(d); start(); }, function(e){ if(e.code==='pin'||e.code==='lock') askPin(e.code==='lock'?'여러 번 틀려서 잠시 잠겼어요. 10분 뒤에 다시 적어 주세요.':'센터 암호가 맞지 않아요.'); else { start(); } });
+  }, function(){ toast('구글 시트에 연결하지 못했어요. 인터넷을 확인해 주세요.'); });
+}
+/* --- Claude 웹 링크판: 운행 기록은 최근 45일과 보고 있는 달만 읽는다 (기록이 많아져도 느려지지 않게) --- */
+var cloud={recent:{},month:{},unsubMonth:null,db:null};
+function useCloud(db){
+  cloud.db=db;
+  var got=false, timer=setTimeout(function(){ if(!got) toast('저장소 응답이 늦어요. 잠시 뒤 다시 열어 주세요.'); },10000);
+  function redraw(){ got=true; clearTimeout(timer); S.trips=Object.assign({},cloud.month,cloud.recent); outbox.forEach(applyOp); if(canRedraw()) render(); }
+  function snapMap(snap){ var o={}; snap.docs.forEach(function(d){o[d.id]=d.data();}); return o; }
+  ['vehicles','services','drivers'].forEach(function(c){ db.collection(c).limit(1000).onSnapshot(function(snap){ S[c]=snapMap(snap); redraw(); }, function(){}); });
+  db.collection('trips').where('date','>=',addDays(today(),-45)).limit(1000).onSnapshot(function(snap){ cloud.recent=snapMap(snap); redraw(); }, function(){});
+  db.doc('settings/center').onSnapshot(function(d){ S.settings=Object.assign({},DEF_SET,d.exists?d.data():{}); migrate(); redraw(); }, function(){});
+  cloud.watchMonth=function(m){
+    if(cloud.unsubMonth){cloud.unsubMonth();cloud.unsubMonth=null;} cloud.month={};
+    if(m+'-31'<addDays(today(),-45)) cloud.unsubMonth=db.collection('trips').where('date','>=',m+'-01').where('date','<=',m+'-31').limit(1000).onSnapshot(function(snap){ cloud.month=snapMap(snap); redraw(); }, function(){});
+    else redraw();
+  };
+  store={mode:'cloud', raw:function(op){
+    var ref=op.c==='settings'?db.doc('settings/center'):db.collection(op.c).doc(op.id);
+    var before=(op.c==='trips'||op.c==='services')?(op.prev||null):null;
+    var p=op.data?ref.set(op.data):ref.delete();
+    if(op.c==='trips'||op.c==='services') db.collection('history').add({at:new Date().toISOString(),by:me,c:op.c,id:op.id,act:op.data?(before?'수정':'추가'):'삭제',before:before?JSON.stringify(before):''}).catch(function(){});
+    return p.catch(function(e){ throw (e&&e.code==='unavailable')?{retry:true}:{msg:'저장하지 못했어요. 보기 전용 권한일 수 있어요.'}; });
+  }};
+  setInterval(flush,30000); window.addEventListener('online',flush);
+  setSync(); render();
+}
+var downloadsCap=null, inClaude=!!(window.claude&&window.claude.use);
+function boot(){
+  if(typeof google!=='undefined'&&google.script&&google.script.run){useSheet();return;}
+  if(inClaude){
+    window.claude.use('downloads').then(function(d){downloadsCap=d;});
+    window.claude.use('db').then(function(db){ if(db) useCloud(db); else useLocal(); });
+    return;
+  }
+  useLocal();
+}
+
+/* ============ 3. 화면 ============ */
+var ui={tab:'home',vid:LS.get('cj.ui',{}).vid||null,month:today().slice(0,7)};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function $(id){return document.getElementById(id);}
+function toast(msg){var t=document.createElement('div');t.className='toast';t.setAttribute('role','status');t.textContent=msg;document.body.appendChild(t);setTimeout(function(){t.remove();},3200);}
+function vids(){return Object.keys(S.vehicles).sort(function(a,b){return (S.vehicles[a].ts||0)-(S.vehicles[b].ts||0);});}
+function curVid(){var ids=vids(); if(!ids.length)return null; if(!S.vehicles[ui.vid])ui.vid=ids[0]; return ui.vid;}
+function hasExamples(){return COLLS.some(function(c){return vals(S[c]).some(function(x){return x.ex;});});}
+function exTag(x){return x&&x.ex?' <span class="ex">예시</span>':'';}
+var PILL={ok:'정상',soon:'곧 챙기기',over:'지났어요',unk:'기록 필요'};
+var alertsNow=[];
+
+function render(){
+  rowDirty=false;
+  $('centerName').textContent=S.settings.center?S.settings.center+' · 차량 점검 알림과 운행일지':'지역아동센터 차량 점검 알림 · 운행일지';
+  var vid=curVid(), now=today(); alertsNow=vid?allAlerts(S,vid,now):[];
+  var urgent=alertsNow.filter(function(a){return a.st==='over'||a.st==='soon';}).length;
+  var tabs=[['home','오늘'],['log','운행일지'],['care','점검·정비'],['set','설정']];
+  $('tabs').innerHTML=tabs.map(function(t){return '<button role="tab" id="tab-'+t[0]+'" aria-selected="'+(ui.tab===t[0])+'" data-act="tab" data-v="'+t[0]+'">'+t[1]+(t[0]==='care'&&urgent?'<span class="cnt" aria-label="챙길 것 '+urgent+'건">'+urgent+'</span>':'')+'</button>';}).join('');
+  var h='';
+  if(store.mode==='loading'){ h='<div class="card empty"><p>기록을 불러오고 있어요…</p></div>'; }
+  else if(!vid && ui.tab!=='set'){ h=viewWelcome(); }
+  else h={home:viewHome,log:viewLog,care:viewCare,set:viewSet}[ui.tab](vid,now,alertsNow);
+  $('view').innerHTML='<div class="wrap" style="gap:18px">'+h+'</div>';
+  setSync();
+}
+function viewWelcome(){
+  return '<div class="card empty"><h2>처음 오셨네요. 차량부터 등록해 주세요.</h2><p>차 이름과 지금 계기판 숫자(km)만 적으면 시작할 수 있어요.</p>'+
+    '<div class="row" style="justify-content:center"><button class="btn main big" data-act="veh-new">차량 등록하기</button><button class="btn" data-act="ex-add">예시로 먼저 살펴보기</button></div></div>';
+}
+function vehPicker(vid){
+  var ids=vids(); if(ids.length<2) return '';
+  return '<div class="chips" role="group" aria-label="차량 고르기">'+ids.map(function(id){var v=S.vehicles[id];return '<button class="chip" aria-pressed="'+(id===vid)+'" data-act="veh-pick" data-v="'+id+'">'+esc(v.name)+'</button>';}).join('')+'</div>';
+}
+function exBanner(){
+  return hasExamples()?'<div class="banner"><span class="grow"><b>지금 보이는 것은 예시 기록이에요.</b> 눌러 보며 익힌 뒤, 우리 센터 차량으로 시작하세요.</span><button class="btn sm" data-act="ex-clear">예시 지우고 시작하기</button></div>':'';
+}
+function ring(a){
+  var r=16, c=2*Math.PI*r, p=Math.max(0.04,Math.min(1,a.ratio||0));
+  var mark=a.st==='over'?'!':a.st==='unk'?'?':'';
+  return '<svg class="ring '+a.st+'" viewBox="0 0 40 40" aria-hidden="true"><circle class="bg" cx="20" cy="20" r="'+r+'"/>'+(a.st==='unk'?'':'<circle class="fg" cx="20" cy="20" r="'+r+'" stroke-dasharray="'+(c*p).toFixed(1)+' '+c.toFixed(1)+'"/>')+(mark?'<text x="20" y="25.5">'+mark+'</text>':'')+'</svg>';
+}
+function shortLabel(a){ return a.st==='unk'?'기록 없음':a.label.split(' · ')[0]; }
+function tile(a){
+  return '<button class="tile '+a.st+'" data-act="al-open" data-v="'+esc(a.key)+'" aria-label="'+esc(a.full)+', '+PILL[a.st]+', '+esc(a.label)+'">'+ring(a)+'<span class="tx"><b>'+esc(a.name)+'</b><span>'+esc(shortLabel(a))+'</span></span></button>';
+}
+// 노란 차 캐릭터. mood에 따라 표정이 바뀐다.
+function buddySvg(mood){
+  var mouth=mood==='over'?'<ellipse cx="46" cy="33" rx="3.2" ry="3.8" fill="#16233a"/>':mood==='soon'?'<path d="M41 34h10" stroke="#16233a" stroke-width="2.4" stroke-linecap="round"/>':'<path d="M40 31q6 6 12 0" stroke="#16233a" stroke-width="2.4" fill="none" stroke-linecap="round"/>';
+  var brow=mood==='over'?'<path d="M31 17l7 2M61 17l-7 2" stroke="#16233a" stroke-width="2" stroke-linecap="round"/><path d="M70 8q3 5 0 8q-3-3 0-8z" fill="#6cc3ff"/>':'';
+  return '<svg viewBox="0 0 92 72" aria-hidden="true"><ellipse cx="46" cy="66" rx="34" ry="4" fill="#16233a" opacity=".12"/><rect x="8" y="12" width="76" height="42" rx="14" fill="#ffc400"/><rect x="8" y="40" width="76" height="6" fill="#16233a"/><rect x="16" y="6" width="60" height="12" rx="6" fill="#ffc400"/>'+
+    '<circle cx="34" cy="25" r="5.4" fill="#fff"/><circle cx="58" cy="25" r="5.4" fill="#fff"/><circle cx="35" cy="26" r="2.6" fill="#16233a"/><circle cx="59" cy="26" r="2.6" fill="#16233a"/>'+brow+mouth+
+    '<circle cx="24" cy="33" r="3" fill="#ff8f6b" opacity=".7"/><circle cx="68" cy="33" r="3" fill="#ff8f6b" opacity=".7"/>'+
+    '<rect x="4" y="34" width="8" height="5" rx="2" fill="#fff3c4"/><rect x="80" y="34" width="8" height="5" rx="2" fill="#fff3c4"/>'+
+    '<circle cx="26" cy="56" r="9" fill="#16233a"/><circle cx="26" cy="56" r="3.5" fill="#cfd6e0"/><circle cx="66" cy="56" r="9" fill="#16233a"/><circle cx="66" cy="56" r="3.5" fill="#cfd6e0"/></svg>';
+}
+function buddy(mood,head,sub){ return '<div class="buddy">'+buddySvg(mood)+'<div class="bubble '+mood+'" role="status"><b>'+esc(head)+'</b><span>'+esc(sub)+'</span></div></div>'; }
+// 오늘 화면의 「점검 한눈에」: 노랑이의 한마디 + 항목 타일 + 철 관리
+function board(al){
+  var cnt={over:0,soon:0,unk:0,ok:0}; al.forEach(function(a){cnt[a.st]++;});
+  var say=mascotSay(al), sea=seasonOf(today());
+  return '<div class="card board">'+buddy(say.mood,say.head,say.sub)+
+    '<div class="tiles">'+al.map(tile).join('')+'</div>'+
+    '<div class="legend"><span><i style="background:var(--over)"></i>지났어요</span><span><i style="background:var(--soon)"></i>곧 챙기기</span><span><i style="background:var(--ok)"></i>정상</span><span><i style="background:var(--unk)"></i>기록 필요</span><span>동그라미는 주기를 얼마나 썼는지 보여 줘요. 누르면 계산 근거가 나와요.</span></div>'+
+    (cnt.unk>=2?'<div class="sub"><span class="grow">기록이 없는 항목 <b>'+cnt.unk+'개</b>. 정비 명세서를 보고 한 번에 적어 두면 편해요.</span><button class="btn sm navy" data-act="bulk">한 번에 적기</button></div>':'')+
+    '<div class="season"><span class="pill unk">'+sea.name+' 관리</span><span class="grow">'+esc(sea.line)+'</span><button class="btn sm" data-act="season">'+sea.name+'에 챙길 것 보기</button></div></div>';
+}
+function viewHome(vid,now,al){
+  var v=S.vehicles[vid], odo=odoOf(S,vid);
+  var digits=String(odo).padStart(6,'0').split('').map(function(d){return '<span>'+d+'</span>';}).join('');
+  var recent=Object.entries(S.trips).filter(function(e){return e[1].vid===vid;}).sort(function(a,b){return (b[1].date+String(b[1].startKm).padStart(8,'0')).localeCompare(a[1].date+String(a[1].startKm).padStart(8,'0'));}).slice(0,3);
+  var qk=quickTemplates(vid);
+  return exBanner()+draftBanner()+backupBanner()+vehPicker(vid)+
+  '<div class="card hero"><div class="grow" style="display:flex;flex-direction:column;gap:10px"><div class="row"><h2>'+esc(v.name)+exTag(v)+'</h2><span class="muted">'+esc(v.plate||'')+'</span></div>'+
+    '<div class="odo" aria-label="현재 주행거리 '+fmtKm(odo)+'킬로미터">'+digits+'<em>km</em></div></div>'+
+    '<button class="btn main big" data-act="trip-new">오늘 운행 기록하기</button></div>'+
+  (qk.length?'<div class="card list"><h3>자주 하는 운행 바로 적기</h3><p class="muted small">지난번과 같은 내용을 미리 채워 드려요. <b>도착 km</b>와 확인 칸만 보고 저장하면 돼요.</p><div class="quick">'+
+    qk.map(function(q,i){return '<button class="btn" data-act="trip-like" data-v="'+i+'"><span>'+esc(q.purpose)+(q.dest?' · '+esc(q.dest):'')+'</span><small>'+esc((q.startTime||'')+(q.endTime?'~'+q.endTime:''))+(q.driver?' · '+esc(q.driver):'')+'</small></button>';}).join('')+'</div></div>':'')+
+  '<div class="row"><h2 class="grow">최근 운행</h2><button class="btn sm" data-act="tab" data-v="log">운행일지 전체 보기</button></div>'+
+  (recent.length?'<div class="list">'+recent.map(function(e){var t=e[1];return '<div class="item card"><b>'+fmtD(t.date)+'</b><span class="pill unk">'+esc(t.purpose)+'</span><span class="grow">'+esc(t.driver)+' 선생님'+(t.dest?' · '+esc(t.dest):'')+exTag(t)+'</span><b class="num">'+fmtKm(t.endKm-t.startKm)+'km</b></div>';}).join('')+'</div>':'<p class="muted">아직 운행 기록이 없어요. 위의 노란 버튼으로 첫 기록을 남겨 보세요.</p>')+
+  careFold(al);
+}
+// 오늘 화면의 차량 점검은 폴더 하나로 접어 둔다. 누르면 펼쳐져 타일이 보인다. (펼친 상태는 기기에 기억)
+function careFold(al){
+  var cnt={over:0,soon:0,unk:0,ok:0}; al.forEach(function(a){cnt[a.st]++;});
+  var st=cnt.over?'over':cnt.soon?'soon':cnt.ok?'ok':'unk', mark={over:'!',soon:'!',ok:'✓',unk:'?'}[st];
+  var line=cnt.over||cnt.soon?[cnt.over?'지난 것 '+cnt.over+'개':'',cnt.soon?'곧 챙길 것 '+cnt.soon+'개':''].filter(Boolean).join(' · '):cnt.ok?'지금은 모두 괜찮아요':'교환한 날을 적어 주시면 챙겨 드려요';
+  return '<details class="card fold" id="careFold"'+(LS.get('cj.fold',false)?' open':'')+'><summary><span class="light '+st+'" aria-hidden="true">'+mark+'</span><span class="grow"><b style="font-size:1.15rem">차량 점검 · 정비 알림</b><br><span class="'+(cnt.over?'pill over':cnt.soon?'pill soon':'muted')+'">'+line+'</span></span><span class="open"><span class="c">눌러서 열기 ▼</span><span class="o">접기 ▲</span></span></summary>'+board(al)+'</details>';
+}
+// 같은 목적(+목적지)으로 다녀온 최근 운행을 3가지까지 골라 '바로 적기' 단추로 보여 준다
+function quickTemplates(vid){
+  var list=Object.keys(S.trips).map(function(id){return S.trips[id];}).filter(function(t){return t.vid===vid;})
+    .sort(function(a,b){return (b.date+(b.endTime||'')).localeCompare(a.date+(a.endTime||''));}).slice(0,40);
+  var seen={}, out=[];
+  list.forEach(function(t){ var k=t.purpose+'|'+(t.dest||''); if(seen[k]) { seen[k].n++; return; } seen[k]={t:t,n:1}; out.push(seen[k]); });
+  return out.sort(function(a,b){return b.n-a.n;}).slice(0,3).map(function(x){return x.t;});
+}
+// 저장하지 않고 닫은 운행 기록이 있으면 알려 준다
+function draftBanner(){ var d=LS.get('cj.draft',null); return d&&d.vid===curVid()?'<div class="banner"><span class="grow"><b>저장하지 않은 운행 기록이 있어요.</b> 쓰던 내용을 보관해 두었어요.</span><button class="btn sm main" data-act="trip-new">이어서 쓰고 저장하기</button><button class="btn sm" data-act="draft-drop">버리기</button></div>':''; }
+// 이 기기에만 저장하는 판에서는 기록이 쌓일 때마다 백업을 권한다
+function backupBanner(){
+  if(store.mode!=='local'||hasExamples()) return ''; var n=Object.keys(S.trips).length+Object.keys(S.services).length, last=LS.get('cj.bk',0);
+  return n-last>=10?'<div class="banner"><span class="grow"><b>기록이 날아가지 않게 백업해 두세요.</b> 마지막 백업 뒤로 기록 '+(n-last)+'건이 쌓였어요. 지금은 이 기기에만 저장돼 있어요.</span><button class="btn sm main" data-act="backup">백업 파일 저장</button></div>':'';
+}
+function tripsOf(vid,month){
+  return Object.entries(S.trips).filter(function(e){return e[1].vid===vid&&e[1].date.slice(0,7)===month;}).sort(function(a,b){return (a[1].date+String(a[1].startKm).padStart(8,'0')).localeCompare(b[1].date+String(b[1].startKm).padStart(8,'0'));});
+}
+function viewLog(vid){
+  var list=tripsOf(vid,ui.month), total=0, kids=0, g=gaps(S,vid), locked=isLocked(S,ui.month); list.forEach(function(e){total+=e[1].endKm-e[1].startKm; kids+=(+e[1].riders||0);});
+  var rows=list.map(function(e){var t=e[1], gap=g[e[0]];return '<tr><td>'+fmtD(t.date)+exTag(t)+'</td><td>'+esc(t.startTime||'-')+'</td><td>'+esc(t.endTime||'-')+'</td><td>'+esc(t.purpose)+(t.dest?' ('+esc(t.dest)+')':'')+'</td><td class="r"><b>'+fmtKm(t.endKm-t.startKm)+'km</b><br><span class="muted small">'+fmtKm(t.startKm)+' → '+fmtKm(t.endKm)+'</span>'+(gap?'<br><span class="warn">앞 기록과 '+fmtKm(Math.abs(gap))+'km '+(gap>0?'비어요':'겹쳐요')+'</span>':'')+'</td><td>'+esc(t.driver)+(t.drvOk?' <span class="pill ok">확인</span>':' <span class="pill unk">확인 전</span>')+'</td><td>'+(t.guardian?esc(t.guardian)+(t.guardOk?' <span class="pill ok">확인</span>':' <span class="pill unk">확인 전</span>'):'-')+'</td><td style="white-space:normal;min-width:180px">'+esc(checkText(t))+'</td><td class="r">'+(t.riders||0)+'</td><td>'+(locked?'':'<button class="linkbtn" data-act="trip-edit" data-v="'+e[0]+'">고치기</button>')+'</td></tr>';}).join('');
+  var saveLabel=inClaude?'인쇄용 파일 저장':'인쇄하기', rowOn=!locked&&rowMode();
+  return vehPicker(vid)+
+  '<div class="row"><h2 class="grow">운행일지</h2>'+(locked?'':'<button class="btn" data-act="row-mode" aria-pressed="'+rowOn+'">'+(rowOn?'표에 바로 적기 끄기':'표에 바로 적기')+'</button><button class="btn main" data-act="trip-new">+ 운행 기록하기</button>')+'</div>'+
+  (rowOn?'<div class="banner entryhelp" style="background:var(--surface2)"><span class="grow"><b>종이 일지처럼 표 맨 아래 노란 줄에 바로 적으세요.</b> 칸 사이는 <span class="key">Tab</span>, 저장은 <span class="key">Enter</span>. 종이에 먼저 적어 두었다가 한꺼번에 옮겨 적어도 돼요.</span></div><div id="rowErr" role="alert"></div>':'')+
+  '<div class="row"><button class="btn sm" data-act="month" data-v="-1" aria-label="이전 달">◀ 이전 달</button><b class="num" style="font-size:1.2rem">'+ui.month.replace('-','년 ')+'월</b><button class="btn sm" data-act="month" data-v="1" aria-label="다음 달">다음 달 ▶</button><span class="grow"></span><button class="btn sm" data-act="print">'+saveLabel+'</button><button class="btn sm" data-act="claim" title="이 달 운행일지 + 지출 내역 + 영수증 양식">청구용 인쇄 (일지+영수증)</button><button class="btn sm" data-act="csv">엑셀 파일 저장</button>'+(inClaude?'':'<button class="btn sm" data-act="hwpx">한글 파일 저장</button>')+
+    (locked?'<button class="btn sm" data-act="unlock">마감 풀기</button>':(list.length?'<button class="btn sm" data-act="lock">이 달 마감하기</button>':''))+'</div>'+
+  (locked?'<div class="banner" style="background:var(--ok-bg)"><b>마감한 달이에요.</b><span class="grow">결재가 끝난 기록이라 고치거나 지울 수 없어요. 고쳐야 하면 [마감 풀기]를 눌러 주세요.</span></div>':'')+
+  (list.length||rowOn?'<div class="tablebox"><table><thead><tr><th>일자</th><th>출발 시간</th><th>도착 시간</th><th>운행 목적</th><th class="r">운행 거리</th><th>운전자 확인</th><th>동승자 확인</th><th>차량 점검 내용</th><th class="r">탑승 아동</th><th></th></tr></thead><tbody>'+rows+(rowOn?entryRow(vid):'')+'</tbody><tfoot><tr><td colspan="4">'+list.length+'회 운행</td><td class="r">'+fmtKm(total)+'km</td><td colspan="3"></td><td class="r">'+kids+'</td><td></td></tr></tfoot></table></div>'
+   :'<div class="card empty"><p>이 달에는 운행 기록이 없어요.</p></div>')+
+  (rowOn?'<div class="row"><span class="grow muted small">노란 줄을 다 적었으면 Enter를 누르거나 오른쪽 단추를 눌러 주세요.</span><button class="btn main" data-act="row-save">노란 줄 저장하기</button></div>':'');
+}
+// '표에 바로 적기'는 PC(넓은 화면)에서 처음부터 켜 둔다. 끄고 켠 것은 기기가 기억한다.
+function rowMode(){ var m=LS.get('cj.rowmode',null); return m==null?innerWidth>700:!!m; }
+// 무언가 적는 중이면 자동 새로 고침으로 화면을 다시 그리지 않는다
+var rowDirty=false;
+function canRedraw(){ return !document.getElementById('dlg').open && !rowDirty; }
+function alertRow(a){
+  var act='';
+  if(a.kind==='item') act='<button class="btn sm '+(a.st==='ok'?'':'navy')+'" data-act="svc-new" data-v="'+a.key+'">'+(a.st==='unk'?'교환한 날 적기':'교환했어요')+'</button>';
+  else if(a.kind==='edu') act='<button class="btn sm" data-act="drv-edit" data-v="'+esc(a.key.slice(4))+'">교육일 고치기</button>';
+  else act='<button class="btn sm" data-act="veh-edit">날짜 고치기</button>';
+  var bar=(a.st!=='unk')?'<div class="bar '+(a.st==='ok'?'':a.st)+'"><i style="width:'+Math.min(100,Math.round((a.ratio||0)*100))+'%"></i></div>':'';
+  return '<div class="alert '+a.st+'"><div class="mark"></div><div class="grow"><div class="row" style="gap:8px"><h3>'+esc(a.full)+'</h3><span class="pill '+a.st+'">'+PILL[a.st]+'</span><b class="num">'+esc(a.label)+'</b></div><p class="why">'+esc(a.why)+'</p>'+bar+'</div><div class="act">'+act+'</div></div>';
+}
+function viewCare(vid,now,al){
+  var hist=Object.entries(S.services).filter(function(e){return e[1].vid===vid;}).sort(function(a,b){return b[1].date.localeCompare(a[1].date);});
+  var v=S.vehicles[vid];
+  return vehPicker(vid)+
+  '<div class="card list"><div class="row"><h3 class="grow">주유·정비 영수증</h3></div><p class="muted small">구청에 청구할 때 쓰는 <b>지출 증빙서(영수증 붙이는 종이)</b>를 인쇄해요. 왼쪽에 영수증 원본, 오른쪽에 사본을 붙여 나란히 비교할 수 있어요.</p>'+
+    '<div class="row"><button class="btn main" data-act="exp-new">+ 주유·구입 기록하기</button><button class="btn" data-act="rc-blank">빈 영수증 양식 인쇄</button></div></div>'+
+  '<div class="row"><h2 class="grow">점검·정비</h2>'+(inClaude?'':'<button class="btn sm" data-act="ics">달력에 알림 넣기</button>')+'</div>'+
+  '<p class="muted small">'+(v.ivChecked?'주기는 차량 설명서로 확인한 값이에요.':'주기는 일반 권장값이에요. 차량 설명서와 다르면 설정에서 고치고 \'설명서로 확인했어요\'에 표시해 주세요.')+'</p>'+
+  '<div class="alerts">'+al.map(alertRow).join('')+'</div>'+
+  '<div class="row"><h2 class="grow">정비·지출 이력</h2>'+(hist.length?'<button class="btn sm" data-act="svc-csv">엑셀 파일 저장</button>':'')+'</div>'+
+  (hist.length?'<div class="tablebox"><table><thead><tr><th>날짜</th><th>항목</th><th class="r">그때 km</th><th class="r">비용</th><th>정비소·메모</th><th>영수증</th><th></th></tr></thead><tbody>'+hist.map(function(e){var s=e[1];return '<tr><td>'+fmtD(s.date)+exTag(s)+'</td><td>'+esc(svcName(s))+'</td><td class="r">'+(s.km?fmtKm(s.km):'-')+'</td><td class="r">'+(s.cost?fmtKm(s.cost)+'원':'-')+'</td><td>'+esc([s.shop,s.memo].filter(Boolean).join(' · '))+'</td><td><button class="linkbtn" data-act="rc-one" data-v="'+e[0]+'">양식 인쇄</button></td><td><button class="linkbtn" data-act="svc-del" data-v="'+e[0]+'">지우기</button></td></tr>';}).join('')+'</tbody></table></div>':'<p class="muted">아직 정비 기록이 없어요.</p>');
+}
+// 정비 항목이 아닌 지출 (주유, 세차 등). 정비 기록과 같은 곳(정비기록 시트)에 저장하고 점검 주기 계산에는 쓰지 않는다.
+var EXPS=[{k:'fuel',n:'주유'},{k:'wash',n:'세차'},{k:'part',n:'부품·용품 구입'},{k:'repair',n:'수리'},{k:'etcx',n:'기타 지출'}];
+function svcName(s){ if(s.itemName) return s.itemName; var a=ITEMS.concat(EXPS).filter(function(i){return i.k===s.item;})[0]; return a?(a.full||a.n):s.item; }
+function viewSet(vid){
+  var st=S.settings, drv=driversOf(S);
+  var modeText={cloud:'이 주소를 PC와 휴대폰에서 열면 같은 기록이 보여요. 한쪽에서 적으면 다른 쪽에 바로 나타납니다.',sheet:'기록은 센터 구글 시트에 저장돼요. 로그인 없이 센터 암호로 들어오고, 다른 기기에는 20초 안에 나타납니다.',local:'지금은 이 기기(브라우저)에만 저장돼요. PC와 휴대폰에서 함께 쓰려면 구글 시트판 주소로 열어 주세요.'}[store.mode]||'';
+  return '<h2>설정</h2><div class="banner" style="background:var(--surface2)"><span>'+modeText+'</span></div><div class="setgrid">'+
+  '<div class="card list"><h3>센터</h3><div class="field"><label for="setCenter">센터 이름</label><input class="in" id="setCenter" value="'+esc(st.center)+'" placeholder="예: ○○지역아동센터"></div>'+
+    '<div class="field"><label for="setAppr">결재란 (빗금 / 으로 나눠 적기)</label><input class="in" id="setAppr" value="'+esc(st.approvers||'')+'" placeholder="담당자/시설장"><span class="hint">운행일지를 인쇄할 때 오른쪽 위에 들어가요.</span></div>'+
+    (store.mode==='sheet'?'<div class="field"><label for="setMail">알림 메일 받을 주소 (쉼표로 여러 개)</label><input class="in" id="setMail" value="'+esc(st.emails||'')+'" placeholder="예: center@example.com"><span class="hint">매주 월요일 아침, 챙길 것이 있을 때만 보내요.</span></div>':'')+
+    '<button class="btn navy" data-act="set-save">저장</button></div>'+
+  '<div class="card list"><h3>차량</h3>'+(vids().map(function(id){var v=S.vehicles[id];return '<div class="item"><b class="grow">'+esc(v.name)+exTag(v)+'</b><span class="muted">'+esc(v.plate||'')+'</span><button class="btn sm" data-act="veh-edit" data-v="'+id+'">고치기</button></div>';}).join('')||'<p class="muted">등록한 차량이 없어요.</p>')+'<button class="btn main" data-act="veh-new">+ 차량 추가</button>'+
+    (vid?'<button class="btn" data-act="iv-edit">'+esc(S.vehicles[vid].name)+' 점검 주기 고치기</button>':'')+'</div>'+
+  '<div class="card list"><h3>운전하는 선생님</h3><p class="hint muted small">통학버스 안전교육을 마지막으로 받은 날을 적어 두면 다음 교육 때를 미리 알려 드려요.</p>'+(drv.map(function(d){return '<div class="item"><b class="grow">'+esc(d.name)+exTag(S.drivers[d.id])+'</b><span class="muted small">교육 '+(d.edu?fmtD(d.edu):'날짜 없음')+'</span><button class="btn sm" data-act="drv-edit" data-v="'+d.id+'">고치기</button></div>';}).join('')||'<p class="muted">아직 없어요.</p>')+'<button class="btn" data-act="drv-new">+ 선생님 추가</button></div>'+
+  '<div class="card list"><h3>이 기기</h3><div class="field"><label for="setMe">이 기기를 쓰는 사람</label><input class="in" id="setMe" value="'+esc(me)+'" placeholder="내 이름"><span class="hint">기록마다 누가 적었는지 남겨요.</span></div><button class="btn" data-act="me-save">저장</button>'+
+    (store.mode==='sheet'?'<button class="btn" data-act="pin-change">센터 암호 바꾸기</button>':'')+'</div>'+
+  '<div class="card list"><h3>백업</h3><p class="muted small">모든 기록을 파일 하나로 내려받아 보관하거나, 보관한 파일에서 다시 불러와요. 다른 판으로 옮길 때도 써요.</p><button class="btn" data-act="backup">전체 백업 파일 저장</button><button class="btn" data-act="restore">백업 파일에서 불러오기</button></div>'+
+  '<div class="card list"><h3>저장하는 정보</h3><p class="muted small">저장하는 것은 차량 이름·번호, 운전자 이름과 교육일, 운행·정비 기록입니다. <b>아동 이름은 받지 않으니 메모에도 적지 말아 주세요.</b> 그만둔 선생님은 위 목록에서 [고치기] → [지우기]로 지울 수 있어요. 보관 기간은 센터의 문서 보존 기준을 따르세요.</p></div>'+
+  (hasExamples()?'<div class="card list"><h3>예시 기록</h3><button class="btn danger" data-act="ex-clear">예시 지우고 시작하기</button></div>':'')+
+  '</div>';
+}
+
+/* ============ 4. 입력 창 ============ */
+function openDlg(html){var d=$('dlg'); d.innerHTML='<form class="dlg" method="dialog" id="dlgForm">'+html+'</form>'; if(!d.open) d.showModal();}
+function closeDlg(){var d=$('dlg'); if(d.open)d.close(); d.innerHTML=''; render();}
+function chipsField(id,label,opts,val,allowOther){
+  return '<div class="field"><span class="lab" id="'+id+'Lab">'+label+'</span><div class="chips" role="group" aria-labelledby="'+id+'Lab">'+opts.map(function(o){return '<button type="button" class="chip" aria-pressed="'+(o===val)+'" data-act="chip" data-f="'+id+'" data-v="'+esc(o)+'">'+esc(o)+'</button>';}).join('')+'</div>'+
+    (allowOther?'<input class="in" id="'+id+'" value="'+esc(val||'')+'" placeholder="직접 적기" aria-labelledby="'+id+'Lab">':'<input type="hidden" id="'+id+'" value="'+esc(val||'')+'">')+'</div>';
+}
+function alertDlg(key){
+  var a=alertsNow.filter(function(x){return x.key===key;})[0]; if(!a) return;
+  var act;
+  if(a.kind==='item') act='<button type="button" class="btn main" data-act="svc-new" data-v="'+a.key+'">'+(a.st==='unk'?'교환한 날 적기':'교환했어요')+'</button>';
+  else if(a.kind==='edu') act='<button type="button" class="btn main" data-act="drv-edit" data-v="'+esc(a.key.slice(4))+'">교육일 고치기</button>';
+  else act='<button type="button" class="btn main" data-act="veh-edit">날짜 고치기</button>';
+  var iv=a.iv?[a.iv.km?fmtKm(a.iv.km)+'km':'',a.iv.mo?a.iv.mo+'개월':''].filter(Boolean).join(' 또는 '):'';
+  openDlg('<header><h2>'+esc(a.full)+'</h2><button type="button" class="btn sm" data-act="dlg-close">닫기</button></header><div class="body">'+
+    '<div class="row"><span class="pill '+a.st+'">'+PILL[a.st]+'</span><b class="num" style="font-size:1.3rem">'+esc(a.label)+'</b></div>'+
+    (a.st!=='unk'?'<div class="bar '+(a.st==='ok'?'':a.st)+'" style="height:14px"><i style="width:'+Math.min(100,Math.round((a.ratio||0)*100))+'%"></i></div>':'')+
+    '<p class="muted">'+esc(a.tip||'')+'</p>'+
+    '<div class="dist" style="font-weight:500;font-size:1rem"><b>계산 근거</b><br>'+esc(a.why).replace(/ \/ /g,'<br>')+(iv?'<br><span class="muted small">주기 '+iv+' (먼저 오는 쪽) · '+esc(a.src)+'</span>':'')+'</div>'+
+    (a.estD&&a.st!=='over'?'<p>지금처럼 타면 <b>'+fmtMD(a.estD)+'쯤</b> 주기에 닿아요. <span class="muted small">(최근 30일 평균으로 어림한 날짜)</span></p>':'')+
+    '</div><footer><button type="button" class="btn" data-act="dlg-close">닫기</button>'+act+'</footer>');
+}
+function bulkForm(){
+  var vid=curVid(), unk=alertsNow.filter(function(a){return a.kind==='item'&&a.st==='unk';});
+  openDlg('<header><h2>교환한 날 한 번에 적기</h2><button type="button" class="btn sm" data-act="dlg-close">닫기</button></header><div class="body"><p class="muted">정비 명세서나 앞 유리 스티커를 보고 <b>아는 것만</b> 적으세요. 모르는 줄은 비워 두면 돼요.</p>'+
+    unk.map(function(a){return '<div class="bulk"><b>'+esc(a.full)+'</b><input class="in" type="date" id="bd_'+a.key+'" max="'+today()+'" aria-label="'+esc(a.full)+' 교환한 날"><input class="in num" id="bk_'+a.key+'" inputmode="numeric" placeholder="그때 km" aria-label="'+esc(a.full)+' 그때 km"></div>';}).join('')+
+    '<div id="bErr" role="alert"></div></div><footer><button type="button" class="btn" data-act="dlg-close">취소</button><button type="button" class="btn main" data-act="bulk-save">적은 것만 저장하기</button></footer>');
+}
+function saveBulk(){
+  var vid=curVid(), n=0, bad='';
+  alertsNow.filter(function(a){return a.kind==='item'&&a.st==='unk';}).forEach(function(a,i){
+    var d=$('bd_'+a.key).value, km=numVal('bk_'+a.key); if(!d) return;
+    if(d>today()){bad=a.full;return;}
+    put('services',newId(),{vid:vid,item:a.key,itemName:a.full,date:d,km:isNaN(km)?0:km,cost:0,shop:'',by:me,ts:Date.now()+i}); n++;
+  });
+  if(bad){$('bErr').innerHTML='<div class="err">'+esc(bad)+': 오늘보다 뒤의 날짜예요.</div>';return;}
+  closeDlg(); toast(n?n+'개 항목을 저장했어요. 다음 시기를 계산했습니다.':'적은 항목이 없어요.');
+}
+function nowHM(){var d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+var tripDirty=false, tripOpenedAt=0;
+function tripForm(id,like){
+  var vid=curVid(), t=id?S.trips[id]:null, odo=odoOf(S,vid), names=driversOf(S).map(function(d){return d.name;});
+  var lastDriver=LS.get('cj.driver',''), draft=(id||like)?null:LS.get('cj.draft',null); if(draft&&draft.vid!==vid) draft=null;
+  if(like) like={date:today(),startTime:like.startTime||'',endTime:like.endTime||nowHM(),driver:like.driver||'',purpose:like.purpose,dest:like.dest||'',startKm:odo,endKm:'',riders:+like.riders||0,guardian:like.guardian||'',drvOk:false,guardOk:false,checks:[],checkNote:'',memo:''};
+  var d=t||like||draft||{date:today(),startTime:'',endTime:nowHM(),driver:lastDriver||me||names[0]||'',purpose:'등원',startKm:odo,endKm:'',riders:0,guardian:'',drvOk:false,guardOk:false,checks:[],checkNote:'',dest:'',memo:''};
+  var have=checksOf(d); tripDirty=false;
+  openDlg('<header><h2>'+(t?'운행 기록 고치기':'운행 기록하기')+'</h2><button type="button" class="btn sm" data-act="trip-close">닫기</button></header><div class="body" id="tripBody">'+
+   (draft?'<div class="banner"><span class="grow">쓰다 만 내용을 불러왔어요. 확인하고 <b>저장하기</b>를 눌러 주세요.</span><button type="button" class="btn sm" data-act="draft-reset">지우고 새로 쓰기</button></div>':'')+
+   (like?'<div class="banner"><span class="grow">지난번 <b>'+esc(like.purpose)+'</b> 운행 내용을 채워 두었어요. <b>도착 km</b>와 확인 칸만 보고 저장해 주세요.</span></div>':'')+
+   '<div class="two"><div class="field"><label for="tDate">일자</label><input class="in" type="date" id="tDate" value="'+d.date+'" max="'+today()+'"></div>'+
+   '<div class="field"><span class="lab">차량</span><div class="in" style="display:flex;align-items:center;background:var(--surface2)">'+esc(S.vehicles[vid].name)+'</div></div></div>'+
+   '<div class="two"><div class="field"><label for="tST">출발 시간</label><input class="in" type="time" id="tST" value="'+esc(d.startTime||'')+'"></div>'+
+   '<div class="field"><label for="tET">도착 시간</label><input class="in" type="time" id="tET" value="'+esc(d.endTime||'')+'"></div></div>'+
+   chipsField('tPurpose','운행 목적',PURPOSES,d.purpose,false)+
+   '<div class="field"><label for="tDest">목적지 <span class="muted small">(적지 않아도 돼요)</span></label><input class="in" id="tDest" value="'+esc(d.dest||'')+'" placeholder="예: ○○초등학교, 과학관"></div>'+
+   '<div class="two"><div class="field"><label for="tStart">출발할 때 계기판 km</label><input class="in km" id="tStart" inputmode="numeric" value="'+d.startKm+'"><span class="hint">지난 운행의 도착 km를 넣어 두었어요.</span></div>'+
+   '<div class="field"><label for="tEnd">도착했을 때 계기판 km</label><input class="in km" id="tEnd" inputmode="numeric" value="'+d.endKm+'" placeholder="숫자만"></div></div>'+
+   '<div class="dist" id="tDist" role="status">도착 km를 적으면 운행 거리를 계산해 드려요.</div>'+
+   chipsField('tDriver','운전자',names,d.driver,true)+
+   '<label class="check"><input type="checkbox" id="tDrvOk" '+(d.drvOk?'checked':'')+'><span><b>운전자 확인</b><br><span class="muted small">위 운행 내용이 맞는지 운전한 선생님이 확인했어요</span></span></label>'+
+   '<div class="two"><div class="field"><label for="tGuard">동승자 (동승보호자)</label><input class="in" id="tGuard" value="'+esc(d.guardian||'')+'" placeholder="함께 탄 선생님 이름" list="tGuardList"><datalist id="tGuardList">'+names.map(function(n){return '<option value="'+esc(n)+'">';}).join('')+'</datalist></div>'+
+   '<div class="field"><span class="lab" id="tRidLab">탑승 아동 수</span><div class="stepper"><button type="button" data-act="step" data-v="-1" aria-label="한 명 줄이기">−</button><input class="in num" id="tRiders" inputmode="numeric" value="'+(d.riders||0)+'" aria-labelledby="tRidLab"><button type="button" data-act="step" data-v="1" aria-label="한 명 늘리기">+</button><span>명</span></div></div></div>'+
+   '<label class="check"><input type="checkbox" id="tGuardOk" '+(d.guardOk?'checked':'')+'><span><b>동승자 확인</b><br><span class="muted small">함께 탄 선생님이 아이들 승하차와 운행 내용을 확인했어요</span></span></label>'+
+   '<div class="field"><div class="row"><span class="lab grow" id="tChkLab">차량 점검 내용</span><button type="button" class="btn sm" data-act="chk-all">모두 이상 없음</button></div><div class="checks" role="group" aria-labelledby="tChkLab">'+CHECKS.map(function(c){return '<label><input type="checkbox" id="tc_'+c.k+'" '+(have.indexOf(c.k)>=0?'checked':'')+'>'+esc(c.n)+'</label>';}).join('')+'</div>'+
+   '<input class="in" id="tChkNote" value="'+esc(d.checkNote||'')+'" placeholder="이상이 있으면 적어 주세요. 예: 오른쪽 뒤 타이어 바람 적음" aria-label="점검에서 이상이 있던 내용"></div>'+
+   '<div class="field"><label for="tMemo">메모 <span class="muted small">(적지 않아도 돼요)</span></label><input class="in" id="tMemo" value="'+esc(d.memo||'')+'" placeholder="예: 주유 5만 원"></div>'+
+   '<div id="tErr" role="alert"></div></div>'+
+   '<footer>'+(t?'<button type="button" class="btn danger" data-act="trip-del" data-v="'+id+'">이 기록 지우기</button><span class="grow"></span>':'<span class="muted small grow">저장하기를 눌러야 기록이 남아요.</span>')+'<button type="button" class="btn" data-act="trip-close">취소</button><button type="button" class="btn main" data-act="trip-save" data-v="'+(id||'')+'">저장하기</button></footer>');
+  $('dlg').dataset.trip=id?'edit':'new'; tripOpenedAt=Date.now();
+  updDist(); if(like){ try{$('tEnd').focus();}catch(e){} }
+}
+function readTrip(){
+  var a=numVal('tStart'), b=numVal('tEnd');
+  return {vid:curVid(),date:$('tDate').value,startTime:$('tST').value,endTime:$('tET').value,driver:$('tDriver').value.trim(),purpose:$('tPurpose').value||'기타',dest:$('tDest').value.trim(),startKm:isNaN(a)?'':a,endKm:isNaN(b)?'':b,riders:numVal('tRiders')||0,guardian:$('tGuard').value.trim(),drvOk:$('tDrvOk').checked,guardOk:$('tGuardOk').checked,checks:CHECKS.filter(function(c){return $('tc_'+c.k).checked;}).map(function(c){return c.k;}),checkNote:$('tChkNote').value.trim(),memo:$('tMemo').value.trim()};
+}
+// 쓰는 동안 내용을 이 기기에 보관한다 (창을 닫거나 화면이 꺼져도 날아가지 않게)
+function keepDraft(){ if($('dlg').dataset.trip==='new'&&$('tDate')){ tripDirty=true; LS.set('cj.draft',readTrip()); } else if($('dlg').dataset.trip==='edit') tripDirty=true; }
+function closeTrip(){
+  var isNew=$('dlg').dataset.trip==='new', dirty=tripDirty; delete $('dlg').dataset.trip; tripDirty=false;
+  if(isNew&&!dirty) LS.set('cj.draft',null);
+  closeDlg(); if(dirty) toast(isNew?'아직 저장하지 않았어요. 쓰던 내용은 보관해 두었어요.':'고친 내용을 저장하지 않고 닫았어요.');
+}
+function numVal(id){var v=String($(id).value).replace(/[^0-9]/g,''); return v===''?NaN:+v;}
+function updDist(){
+  var el=$('tDist'); if(!el)return; var a=numVal('tStart'), b=numVal('tEnd');
+  if(isNaN(b)||isNaN(a)){el.textContent='도착 km를 적으면 운행 거리를 계산해 드려요.';return;}
+  if(b<a){el.innerHTML='<span style="color:var(--over)">도착 km가 출발 km보다 작아요. 계기판 숫자를 다시 봐 주세요.</span>';return;}
+  el.textContent='운행 거리: '+fmtKm(b)+' − '+fmtKm(a)+' = '+fmtKm(b-a)+'km'+(b-a>300?'  (300km가 넘어요. 숫자가 맞는지 한 번 더 봐 주세요)':'');
+}
+// 운행을 저장하거나 지운 뒤 차량 문서에 최신 km를 적어 둔다 (오래된 운행을 읽지 않아도 주행거리를 알 수 있게)
+function syncOdo(vid,hadMax){
+  var v=S.vehicles[vid]; if(!v) return;
+  var tmp=Object.assign({},v,{odo:0}), keep=v; S.vehicles[vid]=tmp; var loaded=odoOf(S,vid); S.vehicles[vid]=keep;
+  var next=hadMax?loaded:Math.max(+v.odo||0,loaded);
+  if(next!==(+v.odo||0)) put('vehicles',vid,Object.assign({},v,{odo:next}));
+}
+// 운행 기록이 맞는지 본다. 틀린 곳이 있으면 쉬운 말로 알려 준다. (입력 창과 '표에 바로 적기'가 함께 쓴다)
+function tripError(f,old){
+  var a=f.startKm, b=f.endKm, err='';
+  if(!f.date) err='일자를 골라 주세요.';
+  else if(f.date>today()) err='오늘보다 뒤의 날짜예요. 일자를 다시 봐 주세요.';
+  else if(isLocked(S,f.date.slice(0,7))||(old&&isLocked(S,old.date.slice(0,7)))) err='마감한 달이에요. 운행일지에서 [마감 풀기]를 한 뒤에 고칠 수 있어요.';
+  else if(!f.startTime||!f.endTime) err='출발 시간과 도착 시간을 적어 주세요.';
+  else if(f.endTime<f.startTime) err='도착 시간이 출발 시간보다 빨라요. 시간을 다시 봐 주세요.';
+  else if(a===''||b==='') err='출발 km와 도착 km를 숫자로 적어 주세요.';
+  else if(b<a) err='도착 km가 출발 km보다 작아요. 계기판 숫자를 다시 봐 주세요.';
+  else if(!f.driver) err='운전자를 고르거나 적어 주세요.';
+  return err;
+}
+// 저장하고, 저장했다는 말을 돌려준다
+function commitTrip(id,f,openedAt){
+  var old=id?S.trips[id]:null, a=f.startKm, b=f.endKm;
+  var vid=old?old.vid:f.vid, hadMax=!!old&&(+old.endKm===odoOf(S,vid)), nid=id||newId();
+  var t=Object.assign(f,{vid:vid,by:me,ts:old?old.ts:Date.now()});
+  if(old) t.editedAt=new Date().toISOString(); else t.secs=Math.round((Date.now()-openedAt)/1000);
+  applyOp({c:'trips',id:nid,data:t}); send({c:'trips',id:nid,data:t,prev:old});
+  LS.set('cj.driver',f.driver); syncOdo(vid,hadMax);
+  var gap=gaps(S,vid)[nid], todo=[]; if(!t.drvOk)todo.push('운전자 확인'); if(t.guardian&&!t.guardOk)todo.push('동승자 확인'); if(t.checks.length<CHECKS.length)todo.push('차량 점검');
+  return '저장했어요. 운행 거리 '+fmtKm(b-a)+'km'+(gap?' · 앞 기록과 km가 '+fmtKm(Math.abs(gap))+'km 안 이어져요':'')+(todo.length?' · 아직 안 한 것: '+todo.join(', '):'');
+}
+function saveTrip(id){
+  var f=readTrip(), err=tripError(f,id?S.trips[id]:null);
+  if(err){$('tErr').innerHTML='<div class="err">'+err+'</div>';$('tErr').scrollIntoView({block:'nearest'});return;}
+  var msg=commitTrip(id,f,tripOpenedAt); if(!id) LS.set('cj.draft',null);
+  delete $('dlg').dataset.trip; tripDirty=false; closeDlg(); toast(msg);
+}
+/* --- 표에 바로 적기: 종이 일지를 쓰듯 운행일지 표 맨 아래 줄에 한 줄씩 적는다 (PC용) --- */
+var rowOpenedAt=0, rowKeep=null;
+function entryRow(vid){
+  var names=driversOf(S).map(function(d){return d.name;}), odo=odoOf(S,vid), k=rowKeep||{};
+  var cur=today().slice(0,7), date=k.date&&k.date.slice(0,7)===ui.month?k.date:(ui.month===cur?today():ui.month+'-01');
+  var opt=function(o,sel){return '<option'+(o===sel?' selected':'')+'>'+esc(o)+'</option>';};
+  return '<tr class="entry" id="entryRow"><td><input class="in d" type="date" id="rDate" value="'+date+'" max="'+today()+'" aria-label="일자"></td>'+
+    '<td><input class="in t" type="time" id="rST" value="'+esc(k.startTime||'')+'" aria-label="출발 시간"></td>'+
+    '<td><input class="in t" type="time" id="rET" value="'+esc(k.endTime||'')+'" aria-label="도착 시간"></td>'+
+    '<td><select class="in n" id="rPurpose" aria-label="운행 목적">'+PURPOSES.map(function(p){return opt(p,k.purpose||'등원');}).join('')+'</select><input class="in n" id="rDest" value="'+esc(k.dest||'')+'" placeholder="목적지(선택)" aria-label="목적지" style="margin-top:6px"></td>'+
+    '<td class="r"><input class="in k" id="rStart" inputmode="numeric" value="'+odo+'" aria-label="출발 km" title="출발 km"><div class="muted small">↓ 도착 km</div><input class="in k" id="rEnd" inputmode="numeric" placeholder="도착 km" aria-label="도착 km"></td>'+
+    '<td><input class="in n" id="rDriver" value="'+esc(k.driver||LS.get('cj.driver','')||me||names[0]||'')+'" list="rNames" aria-label="운전자"><label><input type="checkbox" id="rDrvOk">확인</label></td>'+
+    '<td><input class="in n" id="rGuard" value="'+esc(k.guardian||'')+'" list="rNames" placeholder="동승자" aria-label="동승자"><label><input type="checkbox" id="rGuardOk">확인</label><datalist id="rNames">'+names.map(function(n){return '<option value="'+esc(n)+'">';}).join('')+'</datalist></td>'+
+    '<td><label style="margin-top:0"><input type="checkbox" id="rChk">이상 없음 ('+CHECKS.length+'항목)</label><input class="in" id="rNote" placeholder="이상 있으면 적기" aria-label="점검에서 이상이 있던 내용" style="margin-top:6px;min-width:150px"></td>'+
+    '<td class="r"><input class="in s" id="rRiders" inputmode="numeric" value="'+(k.riders!=null?k.riders:'')+'" placeholder="0" aria-label="탑승 아동 수"></td>'+
+    '<td><button type="button" class="btn sm main" data-act="row-save">저장</button></td></tr>';
+}
+function saveRow(){
+  var a=numVal('rStart'), b=numVal('rEnd');
+  var f={vid:curVid(),date:$('rDate').value,startTime:$('rST').value,endTime:$('rET').value,driver:$('rDriver').value.trim(),purpose:$('rPurpose').value||'기타',dest:$('rDest').value.trim(),
+    startKm:isNaN(a)?'':a,endKm:isNaN(b)?'':b,riders:numVal('rRiders')||0,guardian:$('rGuard').value.trim(),drvOk:$('rDrvOk').checked,guardOk:$('rGuardOk').checked,
+    checks:$('rChk').checked?CHECKS.map(function(c){return c.k;}):[],checkNote:$('rNote').value.trim(),memo:''};
+  var err=tripError(f,null);
+  if(err){$('rowErr').innerHTML='<div class="err">'+err+'</div>';return;}
+  // 다음 줄에는 같은 날짜·목적·운전자·동승자를 남겨 둔다 (종이 일지를 옮겨 적을 때 편하게)
+  rowKeep={date:f.date,purpose:f.purpose,driver:f.driver,guardian:f.guardian,riders:f.riders};
+  var msg=commitTrip(null,f,rowOpenedAt||Date.now()); rowOpenedAt=0;
+  ui.month=f.date.slice(0,7); render(); toast(msg); try{$('rST').focus();}catch(e){}
+}
+function delTrip(id){
+  var old=S.trips[id]; if(!old) return;
+  if(isLocked(S,old.date.slice(0,7))){closeDlg();toast('마감한 달의 기록은 지울 수 없어요.');return;}
+  var hadMax=(+old.endKm===odoOf(S,old.vid));
+  applyOp({c:'trips',id:id,data:null}); send({c:'trips',id:id,data:null,prev:old}); syncOdo(old.vid,hadMax);
+  delete $('dlg').dataset.trip; closeDlg(); toast('지웠어요.');
+}
+// 시범 사용 의견. 구글 시트판은 '의견' 시트에, 웹 링크판은 공유 저장소에 쌓인다.
+var EASE=['아주 어려워요','어려워요','보통이에요','쉬워요','아주 쉬워요'], OLDTIME=['1분 안','1~3분','3~5분','5분 넘게','안 써 봤어요'];
+function fbForm(){
+  var mine=vals(S.trips).filter(function(t){return t.by===me&&t.secs>0;}).map(function(t){return t.secs;});
+  openDlg('<header><h2>의견 보내기</h2><button type="button" class="btn sm" data-act="dlg-close">닫기</button></header><div class="body">'+
+   buddy('ok','써 보시니 어떠셨어요?','솔직하게 적어 주시면 더 쓰기 쉽게 고칠게요. 아는 것만 적으셔도 돼요.')+
+   '<div class="field"><span class="lab" id="fEaseLab">쓰기 쉬웠나요?</span><div class="chips rate" role="group" aria-labelledby="fEaseLab">'+EASE.map(function(e,i){return '<button type="button" class="chip" aria-pressed="false" data-act="chip" data-f="fEase" data-v="'+(i+1)+'">'+e+'</button>';}).join('')+'</div><input type="hidden" id="fEase" value=""></div>'+
+   chipsField('fOld','지금(종이나 엑셀)은 운행일지 1건 쓰는 데 얼마나 걸리세요?',OLDTIME,'',false)+
+   '<div class="field"><label for="fConf">가장 헷갈린 버튼이나 글자</label><input class="in" id="fConf" placeholder="예: 동승자 확인이 뭔지 몰랐어요"></div>'+
+   '<div class="field"><label for="fGood">좋았던 점</label><input class="in" id="fGood"></div>'+
+   '<div class="field"><label for="fWish">있었으면 하는 것</label><input class="in" id="fWish" placeholder="예: 주유 기록도 했으면 좋겠어요"></div>'+
+   '<div class="field"><label for="fName">이름 <span class="muted small">(적지 않아도 돼요)</span></label><input class="in" id="fName" value="'+esc(me)+'"></div>'+
+   (mine.length?'<p class="muted small">이 기기에서 운행 기록 '+mine.length+'건을 평균 '+Math.round(mine.reduce(function(a,b){return a+b;},0)/mine.length)+'초에 적으셨어요. 이 숫자도 함께 보내져요.</p>':'')+
+   '<div id="fErr" role="alert"></div></div><footer><button type="button" class="btn" data-act="dlg-close">취소</button><button type="button" class="btn main" data-act="fb-save">보내기</button></footer>');
+}
+function saveFb(){
+  var f={at:new Date().toISOString(),by:$('fName').value.trim(),ease:+$('fEase').value||0,oldTime:$('fOld').value,confusing:$('fConf').value.trim(),good:$('fGood').value.trim(),wish:$('fWish').value.trim(),device:innerWidth<700?'휴대폰':'PC'};
+  if(!f.ease&&!f.confusing&&!f.good&&!f.wish&&!f.oldTime){$('fErr').innerHTML='<div class="err">하나라도 골라 주시거나 적어 주세요.</div>';return;}
+  var mine=vals(S.trips).filter(function(t){return t.by===me&&t.secs>0;}).map(function(t){return t.secs;});
+  f.trips=mine.length; f.avgSecs=mine.length?Math.round(mine.reduce(function(a,b){return a+b;},0)/mine.length):0;
+  put('feedback',newId(),f); closeDlg(); toast('의견을 보냈어요. 고맙습니다!');
+}
+// 사용 방법: 바탕화면·홈 화면에 두는 법 + 매일 쓰는 법. 인쇄해서 PC 옆에 붙여 둘 수 있다.
+var HELP=[
+ ['PC 바탕화면에 두기',[
+  '<b>가장 쉬운 방법:</b> 받은 파일 <b>「차량 지킴이 열기」</b>를 바탕화면에 복사해 두세요. 두 번 누르면 바로 열려요.',
+  '<b>크롬에서:</b> 차량 지킴이를 연 채로 오른쪽 위 <span class="key">⋮</span> → <b>전송, 저장, 공유</b> → <b>바로가기 만들기</b> → <b>창으로 열기</b>에 체크 → <b>만들기</b>. 바탕화면에 아이콘이 생겨요.',
+  '<b>엣지·크롬 공통:</b> 브라우저 창을 조금 작게 한 뒤, 주소창 맨 왼쪽의 자물쇠(또는 ⓘ) 표시를 마우스로 꾹 눌러 <b>바탕화면으로 끌어다 놓아도</b> 돼요.',
+  '메뉴 이름은 브라우저 버전에 따라 조금 다를 수 있어요. 비슷한 이름을 찾아 주세요.']],
+ ['휴대폰 홈 화면에 두기',[
+  '<b>갤럭시(삼성 인터넷):</b> 아래쪽 <span class="key">≡</span> → <b>현재 페이지 추가</b> → <b>홈 화면</b>.',
+  '<b>갤럭시(크롬):</b> 오른쪽 위 <span class="key">⋮</span> → <b>홈 화면에 추가</b> → <b>추가</b>.',
+  '<b>아이폰(사파리):</b> 아래쪽 공유 단추 <span class="key">□↑</span> → <b>홈 화면에 추가</b> → <b>추가</b>.',
+  '처음 한 번만 센터 암호를 적으면 그 휴대폰이 기억해요.']],
+ ['운행 기록 적기 (매일)',[
+  '운행을 마치면 <b>[오늘 운행 기록하기]</b>를 눌러요. 등원·하원처럼 늘 같은 운행은 <b>「자주 하는 운행 바로 적기」</b> 단추를 누르면 지난번 내용이 미리 채워져요.',
+  '<b>도착했을 때 계기판 km</b>만 적으면 운행 거리는 저절로 계산돼요.',
+  '<b>[모두 이상 없음]</b>, 운전자 확인, 동승자 확인에 표시하고 <b>[저장하기]</b>를 꼭 눌러 주세요.']],
+ ['종이 일지와 함께 쓰기 (PC)',[
+  '지금처럼 종이에 먼저 적어도 괜찮아요.',
+  'PC에서 <b>[운행일지]</b> 탭을 열면 표 맨 아래에 <b>노란 줄</b>이 있어요. 종이 일지를 보며 한 줄씩 옮겨 적고 <span class="key">Enter</span>를 누르면 저장돼요. 칸 사이는 <span class="key">Tab</span>으로 옮겨요.',
+  '저장하면 같은 날짜·운전자·동승자가 다음 줄에 남아 있어서 여러 줄을 빨리 적을 수 있어요.']],
+ ['주유·정비 영수증 붙이기',[
+  '<b>[점검·정비]</b> 탭 → <b>[+ 주유·구입 기록하기]</b>에서 금액을 적고 <b>[저장하고 영수증 양식 인쇄]</b>를 눌러요.',
+  '인쇄한 종이 왼쪽에 <b>영수증 원본</b>, 오른쪽에 <b>사본</b>을 붙이면 나란히 비교할 수 있어요.',
+  '엔진오일처럼 주기가 있는 정비는 그 항목의 <b>[교환했어요]</b>로 적으면 다음 교환 시기도 계산돼요.',
+  '구청에 청구할 때는 <b>[운행일지]</b> 탭 → 그 달로 옮긴 뒤 <b>[청구용 인쇄 (일지+영수증)]</b>를 누르면 운행일지, 지출 내역, 영수증 양식이 한 번에 나와요.']]
+];
+function helpBody(){ return HELP.map(function(h,i){return '<div class="howto"><h3><span class="pill unk">'+(i+1)+'</span>'+h[0]+'</h3><ol class="steps">'+h[1].map(function(x){return '<li>'+x+'</li>';}).join('')+'</ol></div>';}).join(''); }
+function helpDlg(){
+  openDlg('<header><h2>사용 방법</h2><button type="button" class="btn sm" data-act="dlg-close">닫기</button></header><div class="body">'+
+    buddy('ok','처음이라 낯설어도 괜찮아요.','아래 순서대로 한 번만 해 두면 다음부터는 아이콘만 누르면 돼요.')+helpBody()+
+    '</div><footer><button type="button" class="btn" data-act="help-print">이 안내 인쇄하기</button><button type="button" class="btn main" data-act="dlg-close">알겠어요</button></footer>');
+}
+function printHelp(){
+  var css='@page hp{size:A4 portrait;margin:14mm}.hp{page:hp;font-family:"Malgun Gothic","Noto Sans KR",sans-serif;color:#000;font-size:11.5pt;line-height:1.6}.hp h1{font-size:20pt;margin:0 0 4mm}.hp h3{font-size:13pt;margin:5mm 0 1mm}.hp .pill{display:inline-block;border:1px solid #000;border-radius:50%;width:7mm;text-align:center;margin-right:2mm}.hp ol{margin:0;padding-left:6mm}.hp li{margin:1mm 0}.hp .key{border:1px solid #000;border-radius:3px;padding:0 3px}.hp .howto{break-inside:avoid}';
+  printOut('<div class="hp"><h1>차량 지킴이 사용 방법</h1>'+helpBody()+'</div>',css,'차량지킴이_사용방법','세로');
+}
+function seasonDlg(){
+  var s=seasonOf(today());
+  openDlg('<header><h2>'+s.name+'에 챙길 것</h2><button type="button" class="btn sm" data-act="dlg-close">닫기</button></header><div class="body">'+buddy('unk',s.line,'어렵지 않아요. 하나씩만 봐 주세요.')+'<ul class="tips">'+s.items.map(function(x){var i=x.indexOf(':');return '<li>'+(i>0?'<b>'+esc(x.slice(0,i))+'</b>'+esc(x.slice(i)):esc(x))+'</li>';}).join('')+'</ul><p class="muted small">일반적인 관리 요령이에요. 잘 모르겠으면 정비소에 "'+s.name+' 점검 부탁드려요"라고만 말해도 돼요.</p></div><footer><button type="button" class="btn main" data-act="dlg-close">알겠어요</button></footer>');
+}
+function svcForm(k){
+  var it=ITEMS.filter(function(i){return i.k===k;})[0], vid=curVid(), iv=intervalOf(S.vehicles[vid],it);
+  openDlg('<header><h2>'+esc(it.full)+' 교환 기록</h2><button type="button" class="btn sm" data-act="dlg-close">닫기</button></header><div class="body">'+
+   '<p class="muted">'+esc(it.tip)+'. 주기: '+[iv.km?fmtKm(iv.km)+'km':'',iv.mo?iv.mo+'개월':''].filter(Boolean).join(' 또는 ')+' (먼저 오는 쪽)</p>'+
+   '<div class="two"><div class="field"><label for="sDate">교환한 날</label><input class="in" type="date" id="sDate" value="'+today()+'"></div>'+
+   '<div class="field"><label for="sKm">그때 계기판 km</label><input class="in km" id="sKm" inputmode="numeric" value="'+odoOf(S,vid)+'"><span class="hint">모르면 비워 두세요. 날짜로만 계산해요.</span></div></div>'+
+   '<div class="two"><div class="field"><label for="sCost">비용(원) <span class="muted small">(선택)</span></label><input class="in" id="sCost" inputmode="numeric" placeholder="예: 85000"></div>'+
+   '<div class="field"><label for="sShop">정비소 <span class="muted small">(선택)</span></label><input class="in" id="sShop" placeholder="예: ○○카센터"></div></div>'+
+   '<div class="field"><label for="sMemo">내용 <span class="muted small">(선택 · 영수증 양식에 들어가요)</span></label><input class="in" id="sMemo" placeholder="예: 엔진오일 6L, 오일필터 교환"></div><div id="sErr" role="alert"></div></div>'+
+   '<footer><button type="button" class="btn" data-act="dlg-close">취소</button><button type="button" class="btn" data-act="svc-save" data-v="'+k+'" data-p="1">저장하고 영수증 양식 인쇄</button><button type="button" class="btn main" data-act="svc-save" data-v="'+k+'">저장하기</button></footer>');
+}
+function saveSvc(k,andPrint){
+  if(!$('sDate').value){$('sErr').innerHTML='<div class="err">교환한 날을 골라 주세요.</div>';return;}
+  if($('sDate').value>today()){$('sErr').innerHTML='<div class="err">오늘보다 뒤의 날짜예요. 날짜를 다시 봐 주세요.</div>';return;}
+  var km=numVal('sKm'), it=ITEMS.filter(function(i){return i.k===k;})[0], id=newId();
+  put('services',id,{vid:curVid(),item:k,itemName:it?it.full:k,date:$('sDate').value,km:isNaN(km)?0:km,cost:numVal('sCost')||0,shop:$('sShop').value.trim(),memo:$('sMemo').value.trim(),by:me,ts:Date.now()});
+  closeDlg(); toast('교환 기록을 저장했어요. 다음 시기를 다시 계산했습니다.');
+  if(andPrint) printReceipts([id]);
+}
+// 주유·세차·구입처럼 점검 주기와 상관없는 지출
+function expForm(){
+  var vid=curVid();
+  openDlg('<header><h2>주유·구입 기록하기</h2><button type="button" class="btn sm" data-act="dlg-close">닫기</button></header><div class="body">'+
+   chipsField('eKind','무엇에 썼나요?',EXPS.map(function(e){return e.n;}),'주유',false)+
+   '<p class="muted small">엔진오일·타이어처럼 <b>주기가 있는 정비</b>는 [점검·정비] 목록의 [교환했어요]로 적으면 다음 시기도 계산하고 영수증 양식도 인쇄할 수 있어요.</p>'+
+   '<div class="two"><div class="field"><label for="eDate">날짜</label><input class="in" type="date" id="eDate" value="'+today()+'" max="'+today()+'"></div>'+
+   '<div class="field"><label for="eCost">금액(원)</label><input class="in km" id="eCost" inputmode="numeric" placeholder="예: 50000"></div></div>'+
+   '<div class="two"><div class="field"><label for="eShop">사용처 <span class="muted small">(선택)</span></label><input class="in" id="eShop" placeholder="예: ○○주유소"></div>'+
+   '<div class="field"><label for="eKm">그때 계기판 km <span class="muted small">(선택)</span></label><input class="in" id="eKm" inputmode="numeric" placeholder="'+fmtKm(odoOf(S,vid))+'"></div></div>'+
+   '<div class="field"><label for="eMemo">내용 <span class="muted small">(선택)</span></label><input class="in" id="eMemo" placeholder="예: 경유 35리터"></div><div id="eErr" role="alert"></div></div>'+
+   '<footer><button type="button" class="btn" data-act="dlg-close">취소</button><button type="button" class="btn" data-act="exp-save" data-p="1">저장하고 영수증 양식 인쇄</button><button type="button" class="btn main" data-act="exp-save">저장하기</button></footer>');
+}
+function saveExp(andPrint){
+  var d=$('eDate').value, cost=numVal('eCost'), kind=$('eKind').value||'기타 지출', e=EXPS.filter(function(x){return x.n===kind;})[0]||EXPS[EXPS.length-1], km=numVal('eKm');
+  if(!d){$('eErr').innerHTML='<div class="err">날짜를 골라 주세요.</div>';return;}
+  if(d>today()){$('eErr').innerHTML='<div class="err">오늘보다 뒤의 날짜예요.</div>';return;}
+  if(isNaN(cost)||!cost){$('eErr').innerHTML='<div class="err">금액을 숫자로 적어 주세요.</div>';return;}
+  var id=newId();
+  put('services',id,{vid:curVid(),item:e.k,itemName:e.n,date:d,km:isNaN(km)?0:km,cost:cost,shop:$('eShop').value.trim(),memo:$('eMemo').value.trim(),by:me,ts:Date.now()});
+  closeDlg(); toast(e.n+' '+fmtKm(cost)+'원을 저장했어요.');
+  if(andPrint) printReceipts([id]);
+}
+function vehForm(id){
+  var v=id?S.vehicles[id]:{name:'',plate:'',baseOdo:'',severe:true,fuel:'경유',inspDate:'',insDate:''};
+  openDlg('<header><h2>'+(id?'차량 고치기':'차량 등록하기')+'</h2><button type="button" class="btn sm" data-act="dlg-close">닫기</button></header><div class="body">'+
+   '<div class="two"><div class="field"><label for="vName">차 이름</label><input class="in" id="vName" value="'+esc(v.name)+'" placeholder="예: 노랑버스, 스타리아"></div>'+
+   '<div class="field"><label for="vPlate">차량 번호 <span class="muted small">(선택)</span></label><input class="in" id="vPlate" value="'+esc(v.plate||'')+'" placeholder="예: 12가 3456"></div></div>'+
+   '<div class="two"><div class="field"><label for="vOdo">지금 계기판 숫자 (km)</label><input class="in km" id="vOdo" inputmode="numeric" value="'+(id?odoOf(S,id):'')+'" placeholder="총 주행거리"><span class="hint">운행일지를 적으면 자동으로 올라가요.</span></div>'+
+   chipsField('vFuel','연료',FUELS,v.fuel||'경유',false)+'</div>'+
+   '<label class="check"><input type="checkbox" id="vSevere" '+(v.severe?'checked':'')+'><span><b>짧은 거리를 자주 다녀요 (등·하원 위주)</b><br><span class="muted small">시동을 자주 걸고 끄면 엔진오일이 빨리 나빠져요. 체크하면 엔진오일을 5,000km 또는 6개월로 더 일찍 알려 드려요.</span></span></label>'+
+   '<div class="two"><div class="field"><label for="vInsp">정기검사 유효기간 만료일</label><input class="in" type="date" id="vInsp" value="'+(v.inspDate||'')+'"><span class="hint">자동차등록증 아래쪽 검사 유효기간의 끝 날짜</span></div>'+
+   '<div class="field"><label for="vIns">보험 만기일</label><input class="in" type="date" id="vIns" value="'+(v.insDate||'')+'"><span class="hint">보험증권에 적힌 끝 날짜</span></div></div><div id="vErr" role="alert"></div></div>'+
+   '<footer><button type="button" class="btn" data-act="dlg-close">취소</button><button type="button" class="btn main" data-act="veh-save" data-v="'+(id||'')+'">저장하기</button></footer>');
+}
+function saveVeh(id){
+  var name=$('vName').value.trim(), odo=numVal('vOdo');
+  if(!name){$('vErr').innerHTML='<div class="err">차 이름을 적어 주세요.</div>';return;}
+  if(isNaN(odo)){$('vErr').innerHTML='<div class="err">지금 계기판 숫자(km)를 적어 주세요.</div>';return;}
+  var old=id?S.vehicles[id]:{}, nid=id||newId();
+  if(id && odo<odoOf(S,id)){ // 운행일지·정비 기록보다 작게는 내릴 수 없다
+    S.vehicles[id]=Object.assign({},old,{baseOdo:0,odo:0}); var floor=odoOf(S,id); S.vehicles[id]=old;
+    if(odo<floor){$('vErr').innerHTML='<div class="err">운행일지나 정비 기록에 적힌 km('+fmtKm(floor)+')보다 작게는 고칠 수 없어요. 그 기록의 숫자를 먼저 고쳐 주세요.</div>';return;}
+  }
+  var v=Object.assign({},old,{name:name,plate:$('vPlate').value.trim(),baseOdo:odo,odo:odo,fuel:$('vFuel').value||'경유',severe:$('vSevere').checked,inspDate:$('vInsp').value,insDate:$('vIns').value,ts:old.ts||Date.now()});
+  delete v.ex; put('vehicles',nid,v); ui.vid=nid; LS.set('cj.ui',{vid:nid});
+  closeDlg(); toast('차량을 저장했어요.');
+}
+function drvForm(id){
+  var d=id?S.drivers[id]:{name:'',edu:''};
+  openDlg('<header><h2>운전하는 선생님</h2><button type="button" class="btn sm" data-act="dlg-close">닫기</button></header><div class="body">'+
+   '<div class="field"><label for="dName">이름</label><input class="in" id="dName" value="'+esc(d.name)+'"></div>'+
+   '<div class="field"><label for="dEdu">통학버스 안전교육을 마지막으로 받은 날</label><input class="in" type="date" id="dEdu" value="'+(d.edu||'')+'" max="'+today()+'"><span class="hint">교육 수료증에 적힌 날짜. 모르면 비워 두세요.</span></div><div id="dErr" role="alert"></div></div>'+
+   '<footer>'+(id?'<button type="button" class="btn danger" data-act="drv-del" data-v="'+id+'">지우기</button><span class="grow"></span>':'')+'<button type="button" class="btn" data-act="dlg-close">취소</button><button type="button" class="btn main" data-act="drv-save" data-v="'+(id||'')+'">저장하기</button></footer>');
+}
+function ivForm(){
+  var v=S.vehicles[curVid()];
+  openDlg('<header><h2>점검 주기 고치기</h2><button type="button" class="btn sm" data-act="dlg-close">닫기</button></header><div class="body"><p class="muted">km와 개월 중 먼저 오는 쪽으로 알려 드려요. 쓰지 않는 칸은 0으로 두세요.</p>'+
+   itemsFor(v).map(function(it){var iv=intervalOf(v,it);return '<div class="field"><span class="lab">'+esc(it.full)+'</span><div class="two"><label class="row"><input class="in num" style="flex:1" id="ivk_'+it.k+'" inputmode="numeric" value="'+iv.km+'" aria-label="'+esc(it.full)+' km 주기"><span>km</span></label><label class="row"><input class="in num" style="flex:1" id="ivm_'+it.k+'" inputmode="numeric" value="'+iv.mo+'" aria-label="'+esc(it.full)+' 개월 주기"><span>개월</span></label></div></div>';}).join('')+
+   '<label class="check"><input type="checkbox" id="ivChk" '+(v.ivChecked?'checked':'')+'><span><b>차량 설명서로 확인했어요</b><br><span class="muted small">표시하면 계산 근거에 \'일반 권장 주기\' 대신 \'차량 설명서로 확인한 주기\'라고 나와요.</span></span></label></div>'+
+   '<footer><button type="button" class="btn" data-act="iv-reset">기본값으로 되돌리기</button><span class="grow"></span><button type="button" class="btn" data-act="dlg-close">취소</button><button type="button" class="btn main" data-act="iv-save">저장하기</button></footer>');
+}
+function confirmDlg(msg,act,v,yes){
+  openDlg('<header><h2>확인</h2></header><div class="body"><p>'+msg+'</p></div><footer><button type="button" class="btn" data-act="dlg-close">아니요</button><button type="button" class="btn '+(yes?'main':'danger')+'" data-act="'+act+'" data-v="'+esc(v||'')+'">'+(yes||'네, 지울게요')+'</button></footer>');
+}
+
+/* ============ 5. 인쇄·엑셀·달력·백업 ============ */
+function sheetHtml(vid,month){
+  var v=S.vehicles[vid], list=tripsOf(vid,month), total=0, kids=0, appr=(S.settings.approvers||'담당자/시설장').split('/').map(function(s){return s.trim();}).filter(Boolean);
+  var rows=list.map(function(e,i){var t=e[1];total+=t.endKm-t.startKm;kids+=(+t.riders||0);return '<tr><td>'+(i+1)+'</td><td>'+t.date.slice(5).replace('-','.')+'.</td><td>'+esc(t.startTime||'')+'</td><td>'+esc(t.endTime||'')+'</td><td>'+esc(t.purpose)+(t.dest?'<br>'+esc(t.dest):'')+'</td><td class="r">'+fmtKm(t.startKm)+'</td><td class="r">'+fmtKm(t.endKm)+'</td><td class="r">'+fmtKm(t.endKm-t.startKm)+'</td><td>'+esc(t.driver)+(t.drvOk?' (확인)':'')+'</td><td>'+esc(t.guardian||'')+(t.guardian&&t.guardOk?' (확인)':'')+'</td><td class="l">'+esc(checkText(t))+'</td><td>'+(t.riders||0)+'</td><td class="l">'+esc(t.memo||'')+'</td></tr>';}).join('');
+  for(var i=list.length;i<Math.max(list.length,10);i++) rows+='<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+  return '<div class="ps"><div class="ph"><div><h1>차량 운행일지</h1><p>'+esc(S.settings.center||'')+' &nbsp; '+month.replace('-','년 ')+'월 &nbsp; 차량: '+esc(v.name)+' '+esc(v.plate||'')+(isLocked(S,month)?' &nbsp; (마감)':'')+'</p></div>'+
+    '<table class="ap"><tr><th rowspan="2">결<br>재</th>'+appr.map(function(a){return '<th>'+esc(a)+'</th>';}).join('')+'</tr><tr>'+appr.map(function(){return '<td></td>';}).join('')+'</tr></table></div>'+
+    '<table class="pt"><thead><tr><th>번호</th><th>일자</th><th>출발<br>시간</th><th>도착<br>시간</th><th>운행 목적</th><th>출발 km</th><th>도착 km</th><th>운행<br>거리</th><th>운전자<br>확인</th><th>동승자<br>확인</th><th>차량 점검 내용</th><th>탑승<br>아동</th><th>비고</th></tr></thead><tbody>'+rows+'</tbody>'+
+    '<tfoot><tr><td colspan="7">합계 ('+list.length+'회)</td><td class="r">'+fmtKm(total)+'km</td><td colspan="3"></td><td>'+kids+'명</td><td></td></tr></tfoot></table></div>';
+}
+var PRINT_CSS='@page{size:A4 landscape;margin:12mm}.ps{font-family:"Malgun Gothic","Noto Sans KR",sans-serif;color:#000;font-size:10pt}.ps h1{font-size:20pt;margin:0 0 4pt}.ps p{margin:0}.ph{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8pt}.ps table{border-collapse:collapse}.ps th,.ps td{border:1px solid #000;padding:4pt 5pt;text-align:center;white-space:normal;background:none;color:#000}.pt{width:100%}.pt th{background:#eee}.ps .r{text-align:right}.ps{font-size:9pt}.ps td,.ps th{white-space:nowrap;overflow-wrap:normal;word-break:keep-all}.ps .l{text-align:left;white-space:normal}.ps .ap{width:auto;flex:none}.ps .ph>div{flex:1}.ps tr{break-inside:avoid}.ap td{width:22mm;height:16mm}.ap th{font-weight:normal;padding:2pt 6pt}.ps,.rs{padding:0 1.5px}';
+// 파일로 내려받기. 웹 링크판은 Claude의 저장 기능을, 그 밖에는 브라우저 내려받기를 쓴다.
+function saveFile(name,text,type,okMsg){
+  if(inClaude){
+    if(!downloadsCap){toast('이 화면에서는 파일 저장을 쓸 수 없어요. PC에서 다시 열어 주세요.');return;}
+    downloadsCap.save({filename:name,data:text}).then(function(){toast(okMsg);}).catch(function(e){ if(e&&e.code!=='declined') toast('파일을 저장하지 못했어요.'); });
+    return;
+  }
+  var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:type})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); toast(okMsg);
+}
+function doPrint(){ printOut(sheetHtml(curVid(),ui.month),PRINT_CSS,'차량운행일지_'+ui.month,'가로'); }
+// 인쇄. 웹 링크판은 인쇄용 파일을 내려받게 한다.
+function printOut(html,css,fname,dir){
+  if(inClaude){
+    var doc='<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>'+esc(fname)+'</title><style>'+css+'body{margin:10mm}.tip{font-family:sans-serif;background:#fff3c4;padding:10px;margin-bottom:12px}@media print{.tip{display:none}body{margin:0}}</style></head><body><div class="tip">이 파일을 연 뒤 Ctrl + P 를 누르면 인쇄할 수 있어요. (용지 방향: '+dir+')</div>'+html+'</body></html>';
+    saveFile(fname+'.html',doc,'text/html','저장했어요. 내려받은 파일을 열고 Ctrl+P로 인쇄하세요.'); return;
+  }
+  $('printArea').innerHTML='<style>'+css+'</style>'+html; window.print();
+}
+/* --- 영수증 양식 (지출 증빙서): 세로 A4 한 장. 왼쪽에 원본, 오른쪽에 사본을 붙여 나란히 비교한다 --- */
+var RC_CSS='@page port{size:A4 portrait;margin:12mm}.rc{page:port;font-family:"Malgun Gothic","Noto Sans KR",sans-serif;color:#000;font-size:10.5pt;display:flex;flex-direction:column;gap:5mm;height:268mm;box-sizing:border-box;padding:0 1.5px}'+
+  '.rc+.rc,.ps+.rc,.rs+.rc,.ps+.rs{break-before:page}.rs{page:port;font-family:"Malgun Gothic","Noto Sans KR",sans-serif;color:#000;font-size:10.5pt}'+
+  '.rc h1,.rs h1{font-size:19pt;margin:0;letter-spacing:2pt}.rc .hd{display:flex;justify-content:space-between;align-items:flex-end;gap:6mm}.rc .hd p{margin:1mm 0 0;font-size:10pt}'+
+  '.rc table,.rs table{border-collapse:collapse}.rc th,.rc td,.rs th,.rs td{border:1px solid #000;padding:2.2mm 2.5mm;text-align:left;color:#000;background:none;white-space:normal}.rc th,.rs th{background:#eee;width:24mm;text-align:center;font-weight:bold}'+
+  '.rc .info{width:100%}.rc .info td{height:6mm}.rc .ap{width:auto}.rc .ap th{width:auto;font-weight:normal;padding:1mm 4mm}.rc .ap td{width:20mm;height:14mm}'+
+  '.rc .boxes{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:4mm;min-height:0}.rc .box{border:1.5px dashed #000;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:4mm;text-align:center}'+
+  '.rc .box b{font-size:13pt}.rc .box span{font-size:9pt;color:#333;margin-top:1mm}.rc .ft{text-align:center;line-height:1.9}.rc .ft .sig{text-align:right;margin-top:1mm}'+
+  '.rs .sum{width:100%;margin-top:4mm}.rs .r{text-align:right}.rs th{width:auto}';
+function receiptHtml(s){
+  var v=S.vehicles[(s&&s.vid)||curVid()]||{}, appr=(S.settings.approvers||'담당자/시설장').split('/').map(function(x){return x.trim();}).filter(Boolean);
+  var blank=!s; s=s||{};
+  var dt=s.date?s.date.split('-'):null, line='&nbsp;';
+  return '<div class="rc"><div class="hd"><div><h1>지출 증빙서</h1><p>(영수증 첨부용) &nbsp; '+esc(S.settings.center||'')+'</p></div>'+
+    '<table class="ap"><tr><th rowspan="2">결<br>재</th>'+appr.map(function(a){return '<th>'+esc(a)+'</th>';}).join('')+'</tr><tr>'+appr.map(function(){return '<td></td>';}).join('')+'</tr></table></div>'+
+    '<table class="info"><tr><th>차량</th><td>'+esc((v.name||'')+' '+(v.plate||''))+'</td><th>지출일</th><td>'+(dt?dt[0]+'년 '+(+dt[1])+'월 '+(+dt[2])+'일':'&nbsp; &nbsp; &nbsp; 년 &nbsp; &nbsp; 월 &nbsp; &nbsp; 일')+'</td></tr>'+
+    '<tr><th>항목</th><td>'+(blank?line:esc(svcName(s)))+'</td><th>금액</th><td>'+(s.cost?fmtKm(s.cost)+' 원':'<span style="float:right">원</span>')+'</td></tr>'+
+    '<tr><th>사용처</th><td>'+(esc(s.shop||'')||line)+'</td><th>그때 km</th><td>'+(s.km?fmtKm(s.km)+' km':'<span style="float:right">km</span>')+'</td></tr>'+
+    '<tr><th>내용</th><td colspan="3">'+(esc(s.memo||'')||line)+'</td></tr>'+
+    '<tr><th>작성자</th><td>'+(esc(s.by||'')||line)+'</td><th>확인자</th><td>'+line+'</td></tr></table>'+
+    '<div class="boxes"><div class="box"><b>영수증 원본</b><span>여기에 원본을 붙여 주세요</span></div><div class="box"><b>영수증 사본</b><span>여기에 복사본을 붙여 주세요</span></div></div>'+
+    '<div class="ft">위와 같이 차량 운영비를 지출하였음을 확인합니다.<div class="sig">'+(dt?dt[0]:'20&nbsp;&nbsp;&nbsp;')+'년 &nbsp; &nbsp; 월 &nbsp; &nbsp; 일 &nbsp; &nbsp; 작성자 &nbsp; '+(esc(s.by||'')||'&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;')+' &nbsp; (서명)</div></div></div>';
+}
+function printReceipts(ids){
+  var list=ids?ids.map(function(id){return S.services[id];}).filter(Boolean):[null];
+  printOut(list.map(receiptHtml).join(''),RC_CSS,list[0]?'지출증빙서_'+list[0].date:'지출증빙서_빈양식','세로');
+}
+function monthExpenses(vid,month){
+  return vals(S.services).filter(function(s){return s.vid===vid&&s.date.slice(0,7)===month&&+s.cost>0;}).sort(function(a,b){return a.date.localeCompare(b.date);});
+}
+// 구청 청구용: 그 달 운행일지(가로) + 지출 내역 + 지출마다 영수증 양식(세로)을 한 번에 인쇄한다
+function doClaim(){
+  var vid=curVid(), ex=monthExpenses(vid,ui.month), total=0;
+  var sum='<div class="rs"><h1>차량 운영비 지출 내역</h1><p style="margin:2mm 0 0">'+esc(S.settings.center||'')+' &nbsp; '+ui.month.replace('-','년 ')+'월 &nbsp; 차량: '+esc(S.vehicles[vid].name)+' '+esc(S.vehicles[vid].plate||'')+'</p>'+
+    '<table class="sum"><thead><tr><th>번호</th><th>날짜</th><th>항목</th><th>사용처</th><th>내용</th><th class="r">금액</th></tr></thead><tbody>'+
+    (ex.length?ex.map(function(s,i){total+=+s.cost;return '<tr><td>'+(i+1)+'</td><td>'+fmtD(s.date)+'</td><td>'+esc(svcName(s))+'</td><td>'+esc(s.shop||'')+'</td><td>'+esc(s.memo||'')+'</td><td class="r">'+fmtKm(s.cost)+'원</td></tr>';}).join(''):'<tr><td colspan="6" style="text-align:center">이 달에 적은 지출이 없어요</td></tr>')+
+    '</tbody><tfoot><tr><th colspan="5">합계</th><td class="r"><b>'+fmtKm(total)+'원</b></td></tr></tfoot></table></div>';
+  printOut(sheetHtml(vid,ui.month)+sum+(ex.length?ex.map(receiptHtml).join(''):receiptHtml(null)),PRINT_CSS+RC_CSS,'청구용_'+ui.month,'운행일지는 가로, 영수증은 세로');
+}
+function csvOf(rows){var q=function(s){return '"'+String(s==null?'':s).replace(/"/g,'""')+'"';}; return '﻿'+rows.map(function(r){return r.map(q).join(',');}).join('\r\n');}
+function doCsv(){
+  var rows=[['일자','출발시간','도착시간','운행목적','목적지','출발km','도착km','운행거리km','운전자','운전자확인','동승자','동승자확인','차량점검내용','탑승아동수','메모','적은 사람']];
+  tripsOf(curVid(),ui.month).forEach(function(e){var t=e[1];rows.push([t.date,t.startTime,t.endTime,t.purpose,t.dest,t.startKm,t.endKm,t.endKm-t.startKm,t.driver,t.drvOk?'확인':'',t.guardian,t.guardOk?'확인':'',checkText(t),t.riders||0,t.memo,t.by]);});
+  saveFile('차량운행일지_'+ui.month+'.csv',csvOf(rows),'text/csv','엑셀에서 열 수 있는 파일로 저장했어요.');
+}
+// 한글(.hwpx) 파일로 저장. 한글 2014 이후에서 열리고, 한글에서 [다른 이름으로 저장]을 하면 .hwp로도 바꿀 수 있다.
+function doHwpx(){
+  var name='차량운행일지_'+ui.month+'.hwpx', data;
+  try{ data=buildHwpx(curVid(),ui.month); }catch(e){ toast('한글 파일을 만들지 못했어요.'); return; }
+  if(inClaude){ toast('한글 파일은 구글 시트판이나 파일판에서 저장할 수 있어요. 여기서는 엑셀 파일이나 인쇄용 파일을 써 주세요.'); return; }
+  var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'application/hwp+zip'})); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  toast('한글 파일로 저장했어요. 한글에서 열어 고치거나 인쇄할 수 있어요.');
+}
+function doSvcCsv(){
+  var vid=curVid(), name={}; ITEMS.forEach(function(i){name[i.k]=i.full;});
+  var rows=[['날짜','항목','그때km','비용','정비소','메모','적은 사람']];
+  vals(S.services).filter(function(s){return s.vid===vid;}).sort(function(a,b){return a.date.localeCompare(b.date);}).forEach(function(s){rows.push([s.date,svcName(s),s.km||'',s.cost||'',s.shop,s.memo,s.by]);});
+  saveFile('정비이력_'+S.vehicles[vid].name+'.csv',csvOf(rows),'text/csv','정비 이력을 저장했어요.');
+}
+// 휴대폰·PC 달력에 넣는 파일(.ics). 기한 7일 전에 달력 앱이 알려 준다.
+function doIcs(){
+  var now=today(), v=S.vehicles[curVid()], n=0, L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//chajikimi//KO','CALSCALE:GREGORIAN'];
+  alertsNow.forEach(function(a){
+    if(a.st==='unk'||!a.when) return; var d=a.when<now?now:a.when, d2=addDays(d,1); n++;
+    L.push('BEGIN:VEVENT','UID:'+a.key.replace(/[^a-z0-9]/gi,'')+'-'+curVid()+'@chajikimi','DTSTAMP:'+now.replace(/-/g,'')+'T000000Z','DTSTART;VALUE=DATE:'+d.replace(/-/g,''),'DTEND;VALUE=DATE:'+d2.replace(/-/g,''),
+      'SUMMARY:['+v.name+'] '+a.full+(a.kind==='item'?' 교환':''),'DESCRIPTION:'+a.why.replace(/[,;]/g,' ')+(a.estD&&a.estD===a.when?' (주행거리로 어림한 날짜)':''),'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:차량 지킴이 알림','TRIGGER:-P7D','END:VALARM','END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  if(!n){toast('달력에 넣을 날짜가 아직 없어요. 교환 기록이나 날짜를 먼저 적어 주세요.');return;}
+  saveFile('차량점검알림_'+v.name+'.ics',L.join('\r\n'),'text/calendar',n+'건을 달력 파일로 저장했어요. 파일을 열면 달력에 들어가요.');
+}
+function doBackup(){
+  LS.set('cj.bk',Object.keys(S.trips).length+Object.keys(S.services).length);
+  function out(trips){ saveFile('차량지킴이_백업_'+today()+'.json',JSON.stringify({schema:SCHEMA,savedAt:new Date().toISOString(),vehicles:S.vehicles,trips:trips,services:S.services,drivers:S.drivers,settings:S.settings}),'application/json','백업 파일을 저장했어요.'); }
+  if(store.mode!=='cloud'){ out(S.trips); return; }
+  // 웹 링크판은 화면에 최근 기록만 있으므로 석 달씩 나눠 5년 치를 모두 읽는다
+  toast('전체 기록을 모으는 중이에요…');
+  var all={}, jobs=[], y=+today().slice(0,4), m=+today().slice(5,7);
+  for(var i=0;i<20;i++){ var a=new Date(y,m-1-i*3-2,1), b=new Date(y,m-i*3,0); jobs.push(cloud.db.collection('trips').where('date','>=',ymd(a)).where('date','<=',ymd(b)).limit(1000).get().then(function(snap){snap.docs.forEach(function(d){all[d.id]=d.data();});})); }
+  Promise.all(jobs).then(function(){out(all);},function(){toast('기록을 모두 읽지 못했어요. 잠시 뒤 다시 눌러 주세요.');});
+}
+function doRestore(file){
+  var r=new FileReader();
+  r.onload=function(){
+    var d; try{d=JSON.parse(r.result);}catch(e){toast('백업 파일이 아니에요.');return;}
+    if(!d||!d.vehicles||!d.trips){toast('차량 지킴이 백업 파일이 아니에요.');return;}
+    var items=[]; COLLS.forEach(function(c){Object.keys(d[c]||{}).forEach(function(id){items.push({c:c,id:id,data:d[c][id]});});}); var n=items.length; putMany(items);
+    if(d.settings){var st=Object.assign({},DEF_SET,d.settings); if(st.drivers&&st.drivers.length&&!Object.keys(d.drivers||{}).length){S.settings=st;migrate();} else {delete st.drivers; put('settings','center',st);}}
+    render(); toast('기록 '+n+'건을 불러왔어요.');
+  };
+  r.readAsText(file);
+}
+
+/* ============ 6. 예시 기록 ============ */
+function makeExamples(now){
+  function back(n){return addDays(now,-n);}
+  var vid='ex-v1', out={vehicles:{},trips:{},services:{},drivers:{},settings:{center:'별빛지역아동센터(예시)',approvers:'담당자/시설장',locks:[],emails:''}};
+  out.drivers['ex-d1']={name:'김선생',edu:addMonths(now,-20),ts:1,ex:true};
+  out.drivers['ex-d2']={name:'이선생',edu:back(716),ts:2,ex:true};
+  out.vehicles[vid]={name:'노랑버스',plate:'12가 3456',baseOdo:61200,fuel:'경유',severe:false,inspDate:back(-24),insDate:back(-124),ts:1,ex:true};
+  var sv=[['oil',246,52000,85000,'한빛카센터'],['cabin',387,47800,25000,'한빛카센터'],['rot',120,56000,20000,'한빛카센터'],['pad',660,30000,140000,'한빛카센터'],['batt',920,24000,160000,'한빛카센터'],['wiper',160,54500,30000,''],['bfluid',300,45000,60000,'한빛카센터'],['airf',246,52000,20000,'한빛카센터']];
+  sv.forEach(function(s,i){out.services['ex-s'+i]={vid:vid,item:s[0],date:back(s[1]),km:s[2],cost:s[3],shop:s[4],ts:i,ex:true};});
+  var km=61200, n=0, plan=[[9,'등원',14,9],[9,'하원',15,11],[8,'등원',14,8],[8,'하원',16,10],[7,'체험활동',46,12,'과학관'],[6,'등원',14,9],[6,'하원',15,9],[3,'등원',14,10],[3,'하원',15,11],[2,'등원',14,9],[2,'병원 동행',9,1,'소아과'],[2,'하원',15,10],[1,'등원',14,9],[1,'하원',16,11]];
+  plan.forEach(function(p){out.trips['ex-t'+n]={vid:vid,date:back(p[0]),driver:n%3===2?'이선생':'김선생',purpose:p[1],dest:p[4]||'',startKm:km,endKm:km+p[2],startTime:p[1]==='등원'?'13:30':p[1]==='하원'?'18:00':'14:10',endTime:p[1]==='등원'?'14:05':p[1]==='하원'?'18:40':'16:30',riders:p[3],guardian:n%3===2?'김선생':'이선생',drvOk:true,guardOk:n!==13,checks:n===12?['tire','lamp','belt','door']:['tire','lamp','belt','door','sleep','off'],checkNote:n===4?'오른쪽 뒤 타이어 바람 보충':'',memo:'',ts:n,ex:true};km+=p[2];n++;});
+  return out;
+}
+function addExamples(){var d=makeExamples(today()), items=[{c:'settings',id:'center',data:d.settings}]; COLLS.forEach(function(c){Object.keys(d[c]).forEach(function(id){items.push({c:c,id:id,data:d[c][id]});});}); putMany(items,function(ok,bad){ if(bad) toast('예시 '+bad+'건을 저장하지 못했어요. 화면을 새로 고쳐 다시 눌러 주세요.'); }); render();}
+function clearExamples(){
+  var items=[]; COLLS.forEach(function(c){Object.keys(S[c]).forEach(function(id){if(S[c][id].ex)items.push({c:c,id:id,data:null});});}); putMany(items);
+  if(/\(예시\)/.test(S.settings.center||'')) put('settings','center',Object.assign({},S.settings,{center:''}));
+  ui.vid=null; closeDlg(); toast('예시를 지웠어요. 우리 센터 차량을 등록해 주세요.');
+}
+function setLock(on){
+  var st=Object.assign({},S.settings), locks=(st.locks||[]).filter(function(m){return m!==ui.month;}); if(on) locks.push(ui.month); st.locks=locks.sort();
+  put('settings','center',st); closeDlg(); toast(on?'이 달을 마감했어요. 이제 고칠 수 없어요.':'마감을 풀었어요.');
+}
+
+/* ============ 7. 누르기 처리 ============ */
+document.addEventListener('click',function(ev){
+  var b=ev.target.closest('[data-act]'); if(!b) return; var act=b.dataset.act, v=b.dataset.v;
+  switch(act){
+    case 'tab': ui.tab=v; render(); window.scrollTo(0,0); break;
+    case 'trip-like': (function(){var q=quickTemplates(curVid())[+v]; if(q) tripForm(null,q);})(); break;
+    case 'row-mode': LS.set('cj.rowmode',!rowMode()); rowKeep=null; render(); break;
+    case 'row-save': saveRow(); break;
+    case 'exp-new': expForm(); break;
+    case 'exp-save': saveExp(!!b.dataset.p); break;
+    case 'rc-one': printReceipts([v]); break;
+    case 'rc-blank': printReceipts(null); break;
+    case 'claim': doClaim(); break;
+    case 'help': helpDlg(); break;
+    case 'pin-eye': (function(){var i=$(v), show=i.type==='password'; i.type=show?'text':'password'; b.setAttribute('aria-pressed',show); b.setAttribute('aria-label',show?'암호 가리기':'암호 보이기'); b.innerHTML=EYE[show?1:0]; i.focus();})(); break;
+    case 'help-print': printHelp(); break;
+    case 'veh-pick': ui.vid=v; LS.set('cj.ui',{vid:v}); render(); break;
+    case 'al-open': alertDlg(v); break;
+    case 'bulk': bulkForm(); break;
+    case 'bulk-save': saveBulk(); break;
+    case 'trip-new': tripForm(); break;
+    case 'trip-close': closeTrip(); break;
+    case 'draft-drop': LS.set('cj.draft',null); render(); break;
+    case 'draft-reset': LS.set('cj.draft',null); delete $('dlg').dataset.trip; tripForm(); break;
+    case 'chk-all': CHECKS.forEach(function(c){$('tc_'+c.k).checked=true;}); keepDraft(); break;
+    case 'season': seasonDlg(); break;
+    case 'fb': fbForm(); break;
+    case 'fb-save': saveFb(); break;
+    case 'trip-edit': tripForm(v); break;
+    case 'trip-save': saveTrip(v); break;
+    case 'trip-del': confirmDlg('이 운행 기록을 지울까요? 지우면 되돌릴 수 없어요.','trip-del2',v); break;
+    case 'trip-del2': delTrip(v); break;
+    case 'svc-new': svcForm(v); break;
+    case 'svc-save': saveSvc(v,!!b.dataset.p); break;
+    case 'svc-del': confirmDlg('이 정비 기록을 지울까요? 다음 교환 시기가 다시 계산돼요.','svc-del2',v); break;
+    case 'svc-del2': (function(){var old=S.services[v]; applyOp({c:'services',id:v,data:null}); send({c:'services',id:v,data:null,prev:old}); closeDlg(); toast('지웠어요.');})(); break;
+    case 'veh-new': vehForm(); break;
+    case 'veh-edit': vehForm(v||curVid()); break;
+    case 'veh-save': saveVeh(v); break;
+    case 'drv-new': drvForm(''); break;
+    case 'drv-edit': drvForm(v); break;
+    case 'drv-save': (function(){var name=$('dName').value.trim(); if(!name){$('dErr').innerHTML='<div class="err">이름을 적어 주세요.</div>';return;} var old=v?S.drivers[v]:{}; var d={name:name,edu:$('dEdu').value,ts:old.ts||Date.now()}; put('drivers',v||newId(),d); closeDlg(); toast('저장했어요.');})(); break;
+    case 'drv-del': del('drivers',v); closeDlg(); toast('지웠어요.'); break;
+    case 'set-save': (function(){var st=Object.assign({},S.settings); st.center=$('setCenter').value.trim(); st.approvers=$('setAppr').value.trim()||'담당자/시설장'; if($('setMail'))st.emails=$('setMail').value.trim(); put('settings','center',st); render(); toast('저장했어요.');})(); break;
+    case 'me-save': me=$('setMe').value.trim(); LS.set('cj.me',me); toast('저장했어요.'); break;
+    case 'iv-edit': ivForm(); break;
+    case 'iv-save': (function(){var id=curVid(), nv=Object.assign({},S.vehicles[id]), o={}; itemsFor(nv).forEach(function(it){o[it.k]={km:numVal('ivk_'+it.k)||0,mo:numVal('ivm_'+it.k)||0};}); nv.intervals=o; nv.ivChecked=$('ivChk').checked; put('vehicles',id,nv); closeDlg(); toast('주기를 저장했어요.');})(); break;
+    case 'iv-reset': (function(){var id=curVid(), nv=Object.assign({},S.vehicles[id]); delete nv.intervals; nv.ivChecked=false; put('vehicles',id,nv); closeDlg(); toast('기본 주기로 되돌렸어요.');})(); break;
+    case 'month': (function(){var p=ui.month.split('-'), d=new Date(+p[0],+p[1]-1+(+v),1); ui.month=ymd(d).slice(0,7); if(cloud.watchMonth) cloud.watchMonth(ui.month); render();})(); break;
+    case 'lock': confirmDlg('이 달 운행일지를 마감할까요? 마감하면 기록을 고치거나 지울 수 없어요. 결재를 받은 뒤에 눌러 주세요.','lock2','','네, 마감할게요'); break;
+    case 'lock2': setLock(true); break;
+    case 'unlock': confirmDlg('마감을 풀까요? 풀면 이 달 기록을 다시 고칠 수 있어요.','unlock2','','네, 풀게요'); break;
+    case 'unlock2': setLock(false); break;
+    case 'print': doPrint(); break;
+    case 'csv': doCsv(); break;
+    case 'svc-csv': doSvcCsv(); break;
+    case 'hwpx': doHwpx(); break;
+    case 'ics': doIcs(); break;
+    case 'backup': doBackup(); break;
+    case 'restore': $('restoreFile').value=''; $('restoreFile').click(); break;
+    case 'ex-add': addExamples(); break;
+    case 'ex-clear': confirmDlg('예시 기록을 모두 지우고 우리 센터 기록을 시작할까요?','ex-clear2'); break;
+    case 'ex-clear2': clearExamples(); break;
+    case 'dlg-close': closeDlg(); break;
+    case 'pin-ok': window.pinFlow.ok(); break;
+    case 'pin-new': window.pinFlow.make(); break;
+    case 'pin-change': openDlg('<header><h2>센터 암호 바꾸기</h2><button type="button" class="btn sm" data-act="dlg-close">닫기</button></header><div class="body"><p class="muted">바꾸면 다른 선생님 기기에서도 새 암호를 다시 적어야 해요.</p><div class="field"><label for="pinNew">새 암호 (숫자 4자리 이상)</label>'+pinBox('pinNew')+'</div><div id="pinErr" role="alert"></div></div><footer><button type="button" class="btn" data-act="dlg-close">취소</button><button type="button" class="btn main" data-act="pin-change2">바꾸기</button></footer>'); break;
+    case 'pin-change2': (function(){var p=$('pinNew').value.trim(); if(!/^\d{4,}$/.test(p)){$('pinErr').innerHTML='<div class="err">숫자 4자리 이상으로 적어 주세요.</div>';return;} gcall({op:'setPin',newPin:p}).then(function(){pin=p;LS.set('cj.pin',pin);closeDlg();toast('센터 암호를 바꿨어요.');},function(){$('pinErr').innerHTML='<div class="err">바꾸지 못했어요. 인터넷을 확인해 주세요.</div>';});})(); break;
+    case 'chip': (function(){var f=b.dataset.f; $(f).value=v; b.parentNode.querySelectorAll('.chip').forEach(function(c){c.setAttribute('aria-pressed',c===b);}); if($('dlg').dataset.trip) keepDraft();})(); break;
+    case 'step': (function(){var n=(numVal('tRiders')||0)+(+v); $('tRiders').value=Math.max(0,n); keepDraft();})(); break;
+  }
+});
+document.addEventListener('input',function(ev){
+  if($('dlg').dataset.trip&&ev.target.closest('#tripBody')) keepDraft();
+  if(ev.target.closest('#entryRow')){ rowDirty=true; if(!rowOpenedAt) rowOpenedAt=Date.now(); }
+  if(ev.target.id==='tStart'||ev.target.id==='tEnd') updDist();
+  if(ev.target.id==='tDriver'){ document.querySelectorAll('[data-f="tDriver"]').forEach(function(c){c.setAttribute('aria-pressed',c.dataset.v===ev.target.value);}); }
+});
+// 표에 바로 적기: Enter를 누르면 저장 (종이 일지처럼 한 줄 쓰고 다음 줄로)
+document.addEventListener('keydown',function(ev){ if(ev.key==='Enter'&&ev.target.closest&&ev.target.closest('#entryRow')&&!ev.isComposing){ ev.preventDefault(); saveRow(); } });
+// 오늘 화면의 점검 폴더를 펼쳤는지 기억한다
+document.addEventListener('toggle',function(ev){ if(ev.target.id==='careFold') LS.set('cj.fold',ev.target.open); },true);
+$('restoreFile').addEventListener('change',function(ev){ if(ev.target.files[0]) doRestore(ev.target.files[0]); });
+$('dlg').addEventListener('cancel',function(ev){ev.preventDefault(); if($('dlg').dataset.trip) closeTrip(); else if(!$('pinIn')) closeDlg();});
+// 운행 기록을 쓰다가 화면을 닫으려 하면 브라우저가 한 번 더 묻는다
+window.addEventListener('beforeunload',function(ev){ if(tripDirty){ ev.preventDefault(); ev.returnValue=''; } });
+$('dlg').addEventListener('submit',function(ev){ev.preventDefault();});
+window.CJ={buildHwpx:buildHwpx,itemStatus:itemStatus,allAlerts:allAlerts,makeExamples:makeExamples,odoOf:odoOf,ITEMS:ITEMS,state:function(){return S;},outbox:function(){return outbox;}};
+setSync(); render(); boot();
+
+</script>
+
+</body>
+</html>
